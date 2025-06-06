@@ -7,6 +7,7 @@ module.exports = {
     asar: {
       unpack: '**/get-windows/**',
     },
+    arch: process.platform === 'darwin' ? 'universal' : undefined,
   },
   rebuildConfig: {
     forceRebuild: true,
@@ -23,7 +24,9 @@ module.exports = {
     },
     {
       name: '@electron-forge/maker-dmg',
-      config: {},
+      config: {
+        arch: 'universal',
+      },
       platforms: ['darwin'],
     },
     {
