@@ -62,7 +62,7 @@ jobs:
           name: macos-build
           path: |
             out/make/zip/darwin/**/*
-            out/make/dmg/**/*
+            out/make/**/*
           retention-days: 7
 
       - name: Upload Linux artifacts
