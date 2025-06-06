@@ -1,0 +1,10 @@
+{
+  "debug": false,
+  "force": true,
+  "modulesByDir": {
+    "node_modules": [
+      "better-sqlite3",
+      "get-windows"
+    ]
+  }
+}
