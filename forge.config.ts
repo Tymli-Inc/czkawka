@@ -1,0 +1,66 @@
+import type { ForgeConfig } from '@electron-forge/shared-types';
+import { MakerSquirrel } from '@electron-forge/maker-squirrel';
+import { MakerZIP } from '@electron-forge/maker-zip';
+import { MakerDeb } from '@electron-forge/maker-deb';
+import { MakerRpm } from '@electron-forge/maker-rpm';
+import { VitePlugin } from '@electron-forge/plugin-vite';
+import { FusesPlugin } from '@electron-forge/plugin-fuses';
+import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
+const config: ForgeConfig = {
+  packagerConfig: {
+    // Disable ASAR completely to ensure all dependencies work
+    asar: {
+      unpack: "node_modules/**"
+    },
+    ignore: [
+      "!node_modules/better-sqlite3",
+      "!node_modules/get-windows", 
+      "!node_modules/bindings",
+      "!node_modules/prebuild-install",
+      "!node_modules/file-uri-to-path",
+      "!node_modules/node-addon-api",
+      "!node_modules/@mapbox",
+      "!node_modules/node-pre-gyp"
+    ]
+  },
+  rebuildConfig: {},
+  makers: [new MakerSquirrel({}), new MakerZIP({}, ['darwin']), new MakerRpm({}), new MakerDeb({})],
+  plugins: [    
+    new AutoUnpackNativesPlugin({
+      packagedModules: ['better-sqlite3', 'get-windows', 'bindings', 'prebuild-install', 'file-uri-to-path', 'electron-log', 'electron-squirrel-startup']
+    }),
+
+    new VitePlugin({
+      build: [
+        {
+          entry: 'src/main.ts',
+          config: 'vite.main.config.ts',
+          target: 'main',
+        },
+        {
+          entry: 'src/preload.ts',
+          config: 'vite.preload.config.ts',
+          target: 'preload',
+        },
+      ],
+      renderer: [
+        {
+          name: 'main_window',
+          config: 'vite.renderer.config.ts',
+        },
+      ],
+    }),
+    new FusesPlugin({
+      version: FuseVersion.V1,
+      [FuseV1Options.RunAsNode]: false,
+      [FuseV1Options.EnableCookieEncryption]: true,
+      [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+      [FuseV1Options.EnableNodeCliInspectArguments]: false,
+      [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: false, // Disable since we're not using ASAR
+      [FuseV1Options.OnlyLoadAppFromAsar]: false, // Disable since we're not using ASAR
+    }),
+  ],
+};
+
+export default config;
