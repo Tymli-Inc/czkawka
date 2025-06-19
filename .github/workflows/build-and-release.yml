@@ -41,9 +41,69 @@ jobs:
       - name: Build application
         run: npm run make
 
+      - name: Get version from git tag
+        id: get_version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION="v0.0.0-dev"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
       - name: List built files (debug)
         shell: bash
         run: find out -type f -name "*" || ls -la out/ || echo "No out directory found"
+
+      - name: Rename built files
+        shell: bash
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          PLATFORM="${{ matrix.platform }}"
+          ARCH="${{ matrix.arch }}"
+          
+          echo "Renaming files with version: ${VERSION}, platform: ${PLATFORM}, arch: ${ARCH}"
+          
+          # Create a directory for renamed files
+          mkdir -p out/renamed
+          
+          # Function to rename files
+          rename_files() {
+            local source_dir="$1"
+            local file_pattern="$2"
+            local new_prefix="Hourglass-${VERSION}-${PLATFORM}-${ARCH}"
+            
+            if [ -d "$source_dir" ]; then
+              find "$source_dir" -name "$file_pattern" -type f | while read -r file; do
+                if [ -f "$file" ]; then
+                  filename=$(basename "$file")
+                  extension="${filename##*.}"
+                  new_name="${new_prefix}.${extension}"
+                  echo "Renaming: $file -> out/renamed/$new_name"
+                  cp "$file" "out/renamed/$new_name"
+                fi
+              done
+            fi
+          }
+          
+          # Rename files for each platform
+          if [ "${{ matrix.platform }}" == "win32" ]; then
+            rename_files "out/make/squirrel.windows" "*.exe"
+            rename_files "out/make/zip/win32" "*.zip"
+          elif [ "${{ matrix.platform }}" == "darwin" ]; then
+            rename_files "out/make/zip/darwin" "*.zip"
+            rename_files "out/make" "*.dmg"
+          elif [ "${{ matrix.platform }}" == "linux" ]; then
+            rename_files "out/make/deb" "*.deb"
+            rename_files "out/make/rpm" "*.rpm"
+            rename_files "out/make/zip/linux" "*.zip"
+          fi
+          
+          # List renamed files
+          echo "Renamed files:"
+          ls -la out/renamed/ || echo "No renamed files found"
 
       - name: Upload Windows artifacts
         if: matrix.os == 'windows-latest'
@@ -51,8 +111,7 @@ jobs:
         with:
           name: windows-build
           path: |
-            out/make/squirrel.windows/**/*
-            out/make/zip/win32/**/*
+            out/renamed/*
           retention-days: 7
 
       - name: Upload macOS artifacts
@@ -61,8 +120,7 @@ jobs:
         with:
           name: macos-build
           path: |
-            out/make/zip/darwin/**/*
-            out/make/**/*
+            out/renamed/*
           retention-days: 7
 
       - name: Upload Linux artifacts
@@ -71,9 +129,7 @@ jobs:
         with:
           name: linux-build
           path: |
-            out/make/deb/**/*
-            out/make/rpm/**/*
-            out/make/zip/linux/**/*
+            out/renamed/*
           retention-days: 7
 
   release:
@@ -102,37 +158,7 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Upload all files from artifacts directory
-      - name: Upload Windows files
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/v')
-        with:
           files: |
-            artifacts/windows-build/**/*.exe
-            artifacts/windows-build/**/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload macOS files  
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/v')
-        with:
-          files: |
-            artifacts/macos-build/**/*.zip
-            artifacts/macos-build/**/*.dmg
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Linux files
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/v')
-        with:
-          files: |
-            artifacts/linux-build/**/*.deb
-            artifacts/linux-build/**/*.rpm
-            artifacts/linux-build/**/*.zip
+            artifacts/*/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
