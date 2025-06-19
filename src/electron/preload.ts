@@ -11,6 +11,7 @@ interface ElectronAPI {
   getActiveWindow: () => Promise<any>;
   saveActiveWindow: (windowData: ActiveWindowData) => Promise<any>;
   getActiveWindows: () => Promise<any>;
+  compileData: () => Promise<any>;
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -21,7 +22,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return await ipcRenderer.invoke('save-active-window', windowData);
   },
 
-    getActiveWindows: async () => {
+  getActiveWindows: async () => {
     return await ipcRenderer.invoke('get-active-windows');
+  },
+
+  compileData: async () => {
+    return await ipcRenderer.invoke('compile-data');
   }
 } as ElectronAPI);

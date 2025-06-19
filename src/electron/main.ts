@@ -127,11 +127,10 @@ app.whenReady().then(() => {
     if (!BetterSqlite3) {
       throw new Error('better-sqlite3 module not available');
     }
-    
+
     db = new BetterSqlite3(dbPath);
-    
     db.prepare(`
-      CREATE TABLE IF NOT EXISTS active_windows (
+     CREATE TABLE IF NOT EXISTS active_windows (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT,
         unique_id INTEGER,
@@ -146,11 +145,23 @@ app.whenReady().then(() => {
   }
 
   ipcMain.handle('save-active-window', (event, windowData) => {
-    
-    const stmt = db.prepare(
-      'INSERT INTO active_windows (title, unique_id, timestamp) VALUES (?, ?, ?)'
+    const updateStmt = db.prepare(
+        'UPDATE active_windows SET session_length = ? WHERE timestamp = ?'
     );
-    stmt.run(windowData.title, windowData.unique_id, Date.now());
+    const currentWindow = memoryStore.get('currentWindow');
+    let updateOut = null;
+    if (currentWindow) {
+      updateOut = updateStmt.run(currentWindow.sessionDuration, currentWindow.startTime);
+      console.log('Updated session length for window:', currentWindow.startTime);
+    }
+    console.log(updateOut)
+    if (updateOut && updateOut.changes === 0) {
+      console.log('No rows updated, inserting new window data');
+      const stmt = db.prepare(
+          'INSERT INTO active_windows (title, unique_id, timestamp) VALUES (?, ?, ?)'
+      );
+      const out = stmt.run(windowData.title, windowData.unique_id, currentWindow.startTime);
+    }
     return { success: true };
   });
 
@@ -177,17 +188,32 @@ ipcMain.handle('get-active-window', async () => {
 
     const activeWindowCurrent = await getActiveWindow();
     if (activeWindowCurrent) {
-      console.log('Active window found:', activeWindowCurrent.title);
       const currentWindow = memoryStore.get('currentWindow');
-      if(currentWindow !== activeWindowCurrent.id) {
+      if(currentWindow === undefined) {
+        memoryStore.set('currentWindow', {
+          id: activeWindowCurrent.id,
+          startTime: Date.now(),
+          sessionDuration: 0
+        });
+      }
+      if(currentWindow.id !== activeWindowCurrent.id) {
         memoryStore.set('previousWindow', currentWindow);
+        memoryStore.set('currentWindow', {
+          id: activeWindowCurrent.id,
+          startTime: Date.now(),
+          sessionDuration: 0
+        });
+      } else {
+        memoryStore.set('currentWindow', {
+          ...currentWindow,
+            sessionDuration: currentWindow.sessionDuration + (Date.now() - currentWindow.startTime)
+        });
       }
       
-      memoryStore.set('currentWindow', activeWindowCurrent.id);
-      console.log('Current window ID stored:', activeWindowCurrent.id);
+
+      console.log('Current window ID stored:', memoryStore.get('currentWindow'));
       console.log('Previous window ID stored:', memoryStore.get('previousWindow'));
       return {
-        
         title: activeWindowCurrent.owner.name,
         id: activeWindowCurrent.id,
         owner: activeWindowCurrent.owner
@@ -206,6 +232,29 @@ ipcMain.handle('get-active-window', async () => {
   }
 });
 
+ipcMain.handle('compile-data', async () => {
+  try {
+     const dataPool = db.prepare('SELECT title, SUM(session_length) FROM active_windows GROUP BY title').all();
+
+     console.log('Data pool:', dataPool);
+     return {
+       success: true,
+       data: dataPool.map((item: any) => {
+            return {
+            title: item.title,
+            session_length: item['SUM(session_length)'] || 0
+            };
+       })
+     }
+  } catch (error) {
+    console.error('Error compiling data:', error);
+    return {
+      error: typeof error === 'object' && error !== null && 'message' in error
+        ? (error as { message: string }).message
+        : String(error),
+    };
+  }
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
