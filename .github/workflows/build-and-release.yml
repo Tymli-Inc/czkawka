@@ -50,8 +50,18 @@ jobs:
           echo "npm_config_cache=/tmp/.npm" >> $GITHUB_ENV
           echo "npm_config_build_from_source=true" >> $GITHUB_ENV
 
+      - name: Install dependencies for Electron
+        run: npm install --runtime=electron --target=36.5.0
+        env:
+          npm_config_target: 36.5.0
+          npm_config_arch: x64
+          npm_config_disturl: https://electronjs.org/headers
+          npm_config_runtime: electron
+          npm_config_build_from_source: true
+
       - name: Install dependencies
         run: npm ci
+
       - name: Clear npm cache (macOS)
         if: matrix.os == 'macos-latest'
         run: npm cache clean --force
