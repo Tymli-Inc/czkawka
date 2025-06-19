@@ -1,9 +1,12 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import log from 'electron-log';
+import { c } from 'vite/dist/node/types.d-aGj9QkWt';
 
 let getActiveWindow: any;
 let BetterSqlite3: any;
+
+const memoryStore = new Map();
 
 function loadGetWindows() {
   const possiblePaths = [];
@@ -132,7 +135,8 @@ app.whenReady().then(() => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT,
         unique_id INTEGER,
-        timestamp INTEGER
+        timestamp INTEGER,
+        session_length INTEGER DEFAULT 0
       )
     `).run();
     
@@ -142,6 +146,7 @@ app.whenReady().then(() => {
   }
 
   ipcMain.handle('save-active-window', (event, windowData) => {
+    
     const stmt = db.prepare(
       'INSERT INTO active_windows (title, unique_id, timestamp) VALUES (?, ?, ?)'
     );
@@ -173,8 +178,17 @@ ipcMain.handle('get-active-window', async () => {
     const activeWindowCurrent = await getActiveWindow();
     if (activeWindowCurrent) {
       console.log('Active window found:', activeWindowCurrent.title);
+      const currentWindow = memoryStore.get('currentWindow');
+      if(currentWindow !== activeWindowCurrent.id) {
+        memoryStore.set('previousWindow', currentWindow);
+      }
+      
+      memoryStore.set('currentWindow', activeWindowCurrent.id);
+      console.log('Current window ID stored:', activeWindowCurrent.id);
+      console.log('Previous window ID stored:', memoryStore.get('previousWindow'));
       return {
-        title: activeWindowCurrent.title,
+        
+        title: activeWindowCurrent.owner.name,
         id: activeWindowCurrent.id,
         owner: activeWindowCurrent.owner
       };

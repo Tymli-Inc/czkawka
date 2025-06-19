@@ -49,17 +49,15 @@ const config: ForgeConfig = {
   plugins: [    
     new AutoUnpackNativesPlugin({
       packagedModules: ['better-sqlite3', 'get-windows', 'bindings', 'prebuild-install', 'file-uri-to-path', 'electron-log', 'electron-squirrel-startup']
-    }),
-
-    new VitePlugin({
+    }),    new VitePlugin({
       build: [
         {
-          entry: 'src/main.ts',
+          entry: 'src/electron/main.ts',
           config: 'vite.main.config.ts',
           target: 'main',
         },
         {
-          entry: 'src/preload.ts',
+          entry: 'src/electron/preload.ts',
           config: 'vite.preload.config.ts',
           target: 'preload',
         },

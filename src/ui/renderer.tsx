@@ -29,8 +29,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-
-console.log('👋 This message is being logged by "renderer.tsx", included via Vite');
+import './index.css'; 
 
 const container = document.getElementById('root');
 if (!container) {
