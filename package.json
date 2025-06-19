@@ -1,6 +1,6 @@
 {
   "name": "hourglass",
-  "productName": "Hourglass",
+  "productName": "hourglass",
   "version": "0.0.2",
   "description": "My Electron application description",
   "main": ".vite/build/main.js",
