@@ -10,12 +10,11 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest] # Temporarily disabled: macos-latest
+        os: [windows-latest, ubuntu-latest]
         include:
           - os: windows-latest
             platform: win32
             arch: x64
-          # Temporarily disabled macOS builds
           # - os: macos-latest
           #   platform: darwin
           #   arch: x64
@@ -27,59 +26,35 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4        
+        uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: 'package-lock.json'
-
-      - name: Setup Python (for native modules)
-        if: matrix.os == 'macos-latest'
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Set Electron environment variables
-        shell: bash
-        run: |
-          echo "npm_config_target=$(node -p "require('./package.json').devDependencies.electron")" >> $GITHUB_ENV
-          echo "npm_config_arch=${{ matrix.arch }}" >> $GITHUB_ENV
-          echo "npm_config_target_platform=${{ matrix.platform }}" >> $GITHUB_ENV
-          echo "npm_config_runtime=electron" >> $GITHUB_ENV
-          echo "npm_config_cache=/tmp/.npm" >> $GITHUB_ENV
-          echo "npm_config_build_from_source=true" >> $GITHUB_ENV
-
-      - name: Install dependencies for Electron
-        run: npm install --runtime=electron --target=36.5.0
-        env:
-          npm_config_target: 36.5.0
-          npm_config_arch: x64
-          npm_config_disturl: https://electronjs.org/headers
-          npm_config_runtime: electron
-          npm_config_build_from_source: true
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Clear npm cache (macOS)
-        if: matrix.os == 'macos-latest'
-        run: npm cache clean --force
-
-      - name: Remove node_modules and reinstall (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          rm -rf node_modules
-          npm install
-
+      # - name: Clear npm cache (macOS)
+      #   if: matrix.os == 'macos-latest'
+      #   run: npm cache clean --force
+# 
+      # - name: Remove node_modules and reinstall (macOS)
+      #   if: matrix.os == 'macos-latest'
+      #   run: |
+      #     rm -rf node_modules
+      #     npm install      
       - name: Rebuild native modules
         run: npm run rebuild
 
-      - name: Force rebuild electron native modules (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          npx electron-rebuild --force --types=prod,dev,optional --module-dir=.
+      # - name: Force rebuild electron native modules (macOS)
+      #   if: matrix.os == 'macos-latest'
+      #   run: |
+      #     npx electron-rebuild --force
+      #     npm rebuild
 
       - name: Build application
         run: npm run make
@@ -143,7 +118,8 @@ jobs:
             rename_files "out/make/rpm" "*.rpm"
             rename_files "out/make/zip/linux" "*.zip"
           fi
-            # List renamed files
+          
+          # List renamed files
           echo "Renamed files:"
           ls -la out/renamed/ || echo "No renamed files found"
 
@@ -156,7 +132,6 @@ jobs:
             out/renamed/*
           retention-days: 7
 
-      # Temporarily disabled macOS artifact upload
       # - name: Upload macOS artifacts
       #   if: matrix.os == 'macos-latest'
       #   uses: actions/upload-artifact@v4
