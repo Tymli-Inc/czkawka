@@ -26,8 +26,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4      
-        
+        uses: actions/checkout@v4        
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -41,9 +40,18 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set Electron environment variables
+        shell: bash
+        run: |
+          echo "npm_config_target=$(node -p "require('./package.json').devDependencies.electron")" >> $GITHUB_ENV
+          echo "npm_config_arch=${{ matrix.arch }}" >> $GITHUB_ENV
+          echo "npm_config_target_platform=${{ matrix.platform }}" >> $GITHUB_ENV
+          echo "npm_config_runtime=electron" >> $GITHUB_ENV
+          echo "npm_config_cache=/tmp/.npm" >> $GITHUB_ENV
+          echo "npm_config_build_from_source=true" >> $GITHUB_ENV
+
       - name: Install dependencies
         run: npm ci
-
       - name: Clear npm cache (macOS)
         if: matrix.os == 'macos-latest'
         run: npm cache clean --force
