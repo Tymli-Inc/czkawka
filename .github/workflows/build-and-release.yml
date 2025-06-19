@@ -10,14 +10,15 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest] # Temporarily disabled: macos-latest
         include:
           - os: windows-latest
             platform: win32
             arch: x64
-          - os: macos-latest
-            platform: darwin
-            arch: x64
+          # Temporarily disabled macOS builds
+          # - os: macos-latest
+          #   platform: darwin
+          #   arch: x64
           - os: ubuntu-latest
             platform: linux
             arch: x64
@@ -142,8 +143,7 @@ jobs:
             rename_files "out/make/rpm" "*.rpm"
             rename_files "out/make/zip/linux" "*.zip"
           fi
-          
-          # List renamed files
+            # List renamed files
           echo "Renamed files:"
           ls -la out/renamed/ || echo "No renamed files found"
 
@@ -156,14 +156,15 @@ jobs:
             out/renamed/*
           retention-days: 7
 
-      - name: Upload macOS artifacts
-        if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-build
-          path: |
-            out/renamed/*
-          retention-days: 7
+      # Temporarily disabled macOS artifact upload
+      # - name: Upload macOS artifacts
+      #   if: matrix.os == 'macos-latest'
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: macos-build
+      #     path: |
+      #       out/renamed/*
+      #     retention-days: 7
 
       - name: Upload Linux artifacts
         if: matrix.os == 'ubuntu-latest'
