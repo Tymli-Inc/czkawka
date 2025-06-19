@@ -30,11 +30,11 @@ const config: ForgeConfig = {
       name: '@electron-forge/maker-zip',
       config: {},
       platforms: ['darwin','win32','linux'],
-    },
-    {
+    },    {
       name: '@electron-forge/maker-dmg',
       config: {
-        arch: 'universal',
+        format: 'UDZO',
+        name: 'Hourglass',
       },
       platforms: ['darwin'],
     },

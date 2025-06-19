@@ -1,0 +1,181 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on version tags like v1.0.0
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            platform: win32
+            arch: x64
+          - os: macos-latest
+            platform: darwin
+            arch: x64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Clear npm cache (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npm cache clean --force
+
+      - name: Remove node_modules and reinstall (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          rm -rf node_modules
+          npm install      - name: Rebuild native modules
+        run: npm run rebuild
+
+      - name: Force rebuild electron native modules (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          npx electron-rebuild --force
+          npm rebuild
+
+      - name: Build application
+        run: npm run make
+
+      - name: Get version from git tag
+        id: get_version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION="v0.0.0-dev"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
+      - name: List built files (debug)
+        shell: bash
+        run: find out -type f -name "*" || ls -la out/ || echo "No out directory found"
+
+      - name: Rename built files
+        shell: bash
+        run: |
+          VERSION="${{ steps.get_version.outputs.version }}"
+          PLATFORM="${{ matrix.platform }}"
+          ARCH="${{ matrix.arch }}"
+          
+          echo "Renaming files with version: ${VERSION}, platform: ${PLATFORM}, arch: ${ARCH}"
+          
+          # Create a directory for renamed files
+          mkdir -p out/renamed
+          
+          # Function to rename files
+          rename_files() {
+            local source_dir="$1"
+            local file_pattern="$2"
+            local new_prefix="Hourglass-${VERSION}-${PLATFORM}-${ARCH}"
+            
+            if [ -d "$source_dir" ]; then
+              find "$source_dir" -name "$file_pattern" -type f | while read -r file; do
+                if [ -f "$file" ]; then
+                  filename=$(basename "$file")
+                  extension="${filename##*.}"
+                  new_name="${new_prefix}.${extension}"
+                  echo "Renaming: $file -> out/renamed/$new_name"
+                  cp "$file" "out/renamed/$new_name"
+                fi
+              done
+            fi
+          }
+          
+          # Rename files for each platform
+          if [ "${{ matrix.platform }}" == "win32" ]; then
+            rename_files "out/make/squirrel.windows" "*.exe"
+            rename_files "out/make/zip/win32" "*.zip"
+          elif [ "${{ matrix.platform }}" == "darwin" ]; then
+            rename_files "out/make/zip/darwin" "*.zip"
+            rename_files "out/make" "*.dmg"
+          elif [ "${{ matrix.platform }}" == "linux" ]; then
+            rename_files "out/make/deb" "*.deb"
+            rename_files "out/make/rpm" "*.rpm"
+            rename_files "out/make/zip/linux" "*.zip"
+          fi
+          
+          # List renamed files
+          echo "Renamed files:"
+          ls -la out/renamed/ || echo "No renamed files found"
+
+      - name: Upload Windows artifacts
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: |
+            out/renamed/*
+          retention-days: 7
+
+      - name: Upload macOS artifacts
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-build
+          path: |
+            out/renamed/*
+          retention-days: 7
+
+      - name: Upload Linux artifacts
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: |
+            out/renamed/*
+          retention-days: 7
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R ./artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/*/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
