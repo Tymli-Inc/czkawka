@@ -4,7 +4,9 @@ import App = Electron.App;
 interface AppExtended extends App {
     isQuiting: boolean;
 }
-import { app as appBase, BrowserWindow, ipcMain, Tray, Menu } from 'electron';
+import { app as appBase, BrowserWindow, ipcMain, Tray, Menu, shell } from 'electron';
+import { IncomingMessage } from 'http';
+import { c } from 'vite/dist/node/types.d-aGj9QkWt';
 const app = appBase as AppExtended;
 app.isQuiting = false;
 
@@ -300,6 +302,80 @@ ipcMain.handle('compile-data', async () => {
         : String(error),
     };
   }
+});
+
+// Request single instance lock and register custom protocol for OAuth deep linking
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+    app.quit();
+}
+
+// register the protocol handler differently in dev and prod
+const protocol = 'hourglass';
+if (app.isPackaged) {
+    app.setAsDefaultProtocolClient(protocol);
+} else {
+    // In development, specify executable and arguments to register correctly
+    app.setAsDefaultProtocolClient(protocol, process.execPath, [path.resolve(process.argv[1])]);
+}
+
+let deeplinkUrl: string | null = null;
+
+// Handle protocol activation on Windows (second-instance)
+app.on('second-instance', (event, argv) => {
+    const urlArg = argv.find(arg => arg.startsWith('hourglass://'));
+    if (urlArg) {
+        deeplinkUrl = urlArg;
+        handleDeepLink(urlArg);
+    }
+});
+
+// Handle protocol activation on macOS
+app.on('open-url', (event, urlStr) => {
+    event.preventDefault();
+    deeplinkUrl = urlStr;
+    handleDeepLink(urlStr);
+});
+
+// Function to exchange code for token and send user data to renderer
+function handleDeepLink(urlStr: string) {
+    try {
+        const urlObj = new URL(urlStr);
+        const code = urlObj.searchParams.get('code');
+        console.log('Received deep link URL:', urlStr);
+        if (code) {
+            const { net } = require('electron');
+            const request = net.request({
+                method: 'POST',
+                protocol: 'http:',
+                hostname: 'localhost',
+                port: 3000,
+                path: '/auth/token',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            request.on('response', (response: IncomingMessage) => {
+                let body = '';
+                response.on('data', (chunk: Buffer) => {
+                    body += chunk.toString();
+                });
+                response.on('end', () => {
+                    const userData = JSON.parse(body);
+                    if (mainWindow) {
+                        mainWindow.webContents.send('auth-success', userData);
+                    }
+                });
+                console.log('Response received from token endpoint:', body);
+            });
+            request.write(JSON.stringify({ code, redirect_uri: 'hourglass://' }));
+            request.end();
+        }
+    } catch (err) {
+        console.error('Failed to handle deep link', err);
+    }  
+}  
+
+ipcMain.handle('login', () => {
+    shell.openExternal('http://localhost:3000/auth/google');
 });
 
 app.on('window-all-closed', () => {

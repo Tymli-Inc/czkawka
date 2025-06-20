@@ -7,11 +7,22 @@ interface ActiveWindowData {
   [key: string]: any;
 }
 
+interface UserData {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+  [key: string]: any;
+}
+
 interface ElectronAPI {
   getActiveWindow: () => Promise<any>;
   saveActiveWindow: (windowData: ActiveWindowData) => Promise<any>;
   getActiveWindows: () => Promise<any>;
   compileData: () => Promise<any>;
+  login: () => Promise<void>;
+  onAuthSuccess: (callback: (userData: UserData) => void) => void;
+  removeAuthListener: () => void;
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -28,5 +39,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   compileData: async () => {
     return await ipcRenderer.invoke('compile-data');
+  },
+
+  login: async (): Promise<void> => {
+    return await ipcRenderer.invoke('login');
+  },
+
+  onAuthSuccess: (callback: (userData: UserData) => void) => {
+    ipcRenderer.on('auth-success', (_, userData) => callback(userData));
+  },
+
+  removeAuthListener: () => {
+    ipcRenderer.removeAllListeners('auth-success');
   }
 } as ElectronAPI);
