@@ -5,7 +5,6 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
 const config: ForgeConfig = {
   packagerConfig: {
-    // Disable ASAR completely to ensure all dependencies work
     asar: {
       unpack: "node_modules/**"
     },
@@ -18,13 +17,20 @@ const config: ForgeConfig = {
       "!node_modules/node-addon-api",
       "!node_modules/@mapbox",
       "!node_modules/node-pre-gyp"
-    ]
+    ],
+    executableName: "hourglass",
+    icon: "assets/icons/hourglass",
+    extraResource: ['assets'],
   },
   rebuildConfig: {},
     makers: [
     {
       name: '@electron-forge/maker-squirrel',
-      config: {},
+      config: {
+        name: 'hourglass',
+        setupIcon: 'assets/icons/hourglass.ico',
+        setupExe: 'HourglassSetup.exe',
+      },
     },
     {
       name: '@electron-forge/maker-zip',
@@ -35,21 +41,31 @@ const config: ForgeConfig = {
       config: {
         format: 'UDZO',
         name: 'Hourglass',
+        icon: 'assets/icons/hourglass.icns',
       },
       platforms: ['darwin'],
     },
     {
       name: '@electron-forge/maker-deb',
-      config: {},
+      config: {
+        options: {
+          icon: 'assets/icons/hourglass.png',
+        }
+      },
     },
     {
       name: '@electron-forge/maker-rpm',
-      config: {},
+      config: {
+        options: {
+          icon: 'assets/icons/hourglass.png',
+        }
+      },
     },  ],
   plugins: [    
     new AutoUnpackNativesPlugin({
       packagedModules: ['better-sqlite3', 'get-windows', 'bindings', 'prebuild-install', 'file-uri-to-path', 'electron-log', 'electron-squirrel-startup']
-    }),    new VitePlugin({
+    }),
+    new VitePlugin({
       build: [
         {
           entry: 'src/electron/main.ts',

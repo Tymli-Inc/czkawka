@@ -1,7 +1,12 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import log from 'electron-log';
-import { c } from 'vite/dist/node/types.d-aGj9QkWt';
+import App = Electron.App;
+interface AppExtended extends App {
+    isQuiting: boolean;
+}
+import { app as appBase, BrowserWindow, ipcMain, Tray, Menu } from 'electron';
+const app = appBase as AppExtended;
+app.isQuiting = false;
 
 let getActiveWindow: any;
 let BetterSqlite3: any;
@@ -80,6 +85,14 @@ function loadBetterSqlite3() {
   return false;
 }
 
+function getTrayIconPath() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'assets','icons', 'tray.png');
+  } else {
+    return path.join(__dirname, '..','..', 'assets','icons', 'tray.png');
+  }
+}
+console.log(getTrayIconPath());
 try {
   loadGetWindows();
   loadBetterSqlite3();
@@ -92,7 +105,7 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 
 let mainWindow: BrowserWindow | null = null;
 let db: any;
-
+let tray: Tray | null = null;
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -115,6 +128,39 @@ function createWindow() {
   if (!app.isPackaged) {
     mainWindow.webContents.openDevTools();
   }
+
+  mainWindow.on('close', (event) => {
+    if (!app.isQuiting) {
+      event.preventDefault();
+      mainWindow.hide();
+      mainWindow.setSkipTaskbar(true);
+    }
+  });
+
+  tray = new Tray(getTrayIconPath());
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show App',
+      click: () => {
+        mainWindow.show();
+        mainWindow.setSkipTaskbar(false);
+      },
+    },
+    {
+      label: 'Quit',
+      click: () => {
+        app.isQuiting = true;
+        app.quit();
+      },
+    },
+  ]);
+  tray.setToolTip('Hourglass');
+  tray.setContextMenu(contextMenu);
+
+  tray.on('click', () => {
+    mainWindow.show();
+    mainWindow.setSkipTaskbar(false);
+  });
 }
 
 app.whenReady().then(() => {
