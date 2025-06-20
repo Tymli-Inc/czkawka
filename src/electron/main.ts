@@ -304,37 +304,36 @@ ipcMain.handle('compile-data', async () => {
   }
 });
 
-// Request single instance lock and register custom protocol for OAuth deep linking
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
     app.quit();
 }
 
-// register the protocol handler differently in dev and prod
 const protocol = 'hourglass';
 if (app.isPackaged) {
     app.setAsDefaultProtocolClient(protocol);
 } else {
-    // In development, specify executable and arguments to register correctly
     app.setAsDefaultProtocolClient(protocol, process.execPath, [path.resolve(process.argv[1])]);
 }
 
 let deeplinkUrl: string | null = null;
 
-// Handle protocol activation on Windows (second-instance)
 app.on('second-instance', (event, argv) => {
     const urlArg = argv.find(arg => arg.startsWith('hourglass://'));
     if (urlArg) {
         deeplinkUrl = urlArg;
         handleDeepLink(urlArg);
+        mainWindow?.show();
+        mainWindow?.focus();
     }
 });
 
-// Handle protocol activation on macOS
 app.on('open-url', (event, urlStr) => {
     event.preventDefault();
     deeplinkUrl = urlStr;
     handleDeepLink(urlStr);
+    mainWindow?.show();
+    mainWindow?.focus();
 });
 
 // Function to exchange code for token and send user data to renderer
@@ -345,12 +344,15 @@ function handleDeepLink(urlStr: string) {
         console.log('Received deep link URL:', urlStr);
         if (code) {
             const { net } = require('electron');
+            
+            // Use different URLs based on environment
+            const authUrl = app.isPackaged 
+                ? 'https://hourglass-auth.onrender.com/auth/token'
+                : 'http://localhost:3000/auth/token';
+            
             const request = net.request({
                 method: 'POST',
-                protocol: 'http:',
-                hostname: 'localhost',
-                port: 3000,
-                path: '/auth/token',
+                url: authUrl,
                 headers: { 'Content-Type': 'application/json' }
             });
             request.on('response', (response: IncomingMessage) => {
@@ -375,7 +377,12 @@ function handleDeepLink(urlStr: string) {
 }  
 
 ipcMain.handle('login', () => {
-    shell.openExternal('http://localhost:3000/auth/google');
+    // Use different URLs based on environment
+    const authUrl = app.isPackaged 
+        ? 'https://hourglass-auth.onrender.com/auth/google'
+        : 'http://localhost:3000/auth/google';
+    
+    shell.openExternal(authUrl);
 });
 
 app.on('window-all-closed', () => {
