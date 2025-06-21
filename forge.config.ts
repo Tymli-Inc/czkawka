@@ -29,7 +29,6 @@ const config: ForgeConfig = {
       config: {
         name: 'hourglass',
         setupIcon: 'assets/icons/hourglass.ico',
-        setupExe: 'HourglassSetup.exe',
       },
     },
     {
