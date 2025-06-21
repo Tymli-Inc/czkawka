@@ -14,12 +14,17 @@ export function createMainWindow(app: AppExtended): { window: BrowserWindow, tra
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    frame: false, // Remove the default window frame
+    titleBarStyle: 'hidden', // Hide the title bar
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
+
+  // Remove the default menu bar
+  mainWindow.setMenuBarVisibility(false);
 
   // In development, use the Vite dev server
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -32,13 +37,21 @@ export function createMainWindow(app: AppExtended): { window: BrowserWindow, tra
   if (!require('electron').app.isPackaged) {
     mainWindow.webContents.openDevTools();
   }
-
   mainWindow.on('close', (event) => {
     if (!app.isQuiting) {
       event.preventDefault();
       mainWindow.hide();
       mainWindow.setSkipTaskbar(true);
     }
+  });
+
+  // Listen for maximize/unmaximize events to keep UI in sync
+  mainWindow.on('maximize', () => {
+    mainWindow.webContents.send('window-maximized', true);
+  });
+
+  mainWindow.on('unmaximize', () => {
+    mainWindow.webContents.send('window-maximized', false);
   });
 
   const tray = createTray(mainWindow, app);

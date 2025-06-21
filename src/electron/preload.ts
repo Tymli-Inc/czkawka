@@ -29,6 +29,13 @@ interface ElectronAPI {
   getUserToken: () => Promise<{ userData: UserData | null; isLoggedIn: boolean }>;
   clearUserToken: () => Promise<{ success: boolean; error?: string }>;
   getLoginStatus: () => Promise<{ isLoggedIn: boolean }>;
+  // Window control APIs
+  windowMinimize: () => Promise<void>;
+  windowMaximize: () => Promise<void>;
+  windowClose: () => Promise<void>;
+  windowIsMaximized: () => Promise<boolean>;
+  onWindowMaximized: (callback: (isMaximized: boolean) => void) => void;
+  removeWindowListener: () => void;
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -75,8 +82,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearUserToken: async (): Promise<{ success: boolean; error?: string }> => {
     return await ipcRenderer.invoke('clear-user-token');
   },
-
   getLoginStatus: async (): Promise<{ isLoggedIn: boolean }> => {
     return await ipcRenderer.invoke('get-login-status');
+  },
+
+  // Window control APIs
+  windowMinimize: async (): Promise<void> => {
+    return await ipcRenderer.invoke('window-minimize');
+  },
+
+  windowMaximize: async (): Promise<void> => {
+    return await ipcRenderer.invoke('window-maximize');
+  },
+
+  windowClose: async (): Promise<void> => {
+    return await ipcRenderer.invoke('window-close');
+  },
+  windowIsMaximized: async (): Promise<boolean> => {
+    return await ipcRenderer.invoke('window-is-maximized');
+  },
+
+  onWindowMaximized: (callback: (isMaximized: boolean) => void) => {
+    ipcRenderer.on('window-maximized', (_, isMaximized) => callback(isMaximized));
+  },
+
+  removeWindowListener: () => {
+    ipcRenderer.removeAllListeners('window-maximized');
   }
 } as ElectronAPI);
