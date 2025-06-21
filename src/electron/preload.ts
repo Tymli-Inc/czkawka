@@ -22,6 +22,8 @@ interface ElectronAPI {
   compileData: () => Promise<any>;
   login: () => Promise<void>;
   onAuthSuccess: (callback: (userData: UserData) => void) => void;
+  onAuthFailure: (callback: () => void) => void;
+  onAuthLogout: (callback: () => void) => void;
   removeAuthListener: () => void;  // Token management APIs
   storeUserToken: (userData: UserData) => Promise<{ success: boolean; error?: string }>;
   getUserToken: () => Promise<{ userData: UserData | null; isLoggedIn: boolean }>;
@@ -48,6 +50,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   onAuthSuccess: (callback: (userData: UserData) => void) => {
     ipcRenderer.on('auth-success', (_, userData) => callback(userData));
+  },
+
+  onAuthFailure: (callback: () => void) => {
+    ipcRenderer.on('auth-fail', (_) => callback());
+  },
+
+  onAuthLogout: (callback: () => void) => {
+    ipcRenderer.on('auth-logout', (_) => callback());
   },
 
   removeAuthListener: () => {

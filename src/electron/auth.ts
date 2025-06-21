@@ -4,7 +4,8 @@ import { IncomingMessage } from 'http';
 import {mainWindow} from "./main";
 import Store from 'electron-store';
 import log from "electron-log";
-let store: any;
+import {startActiveWindowTracking, stopActiveWindowTracking} from "./windowTracking";
+export let store: any;
 
 const protocol = 'hourglass';
 let deeplinkUrl: string | null = null;
@@ -17,7 +18,7 @@ export function setupProtocolHandling() {
   }
 }
 
-export function setupDeepLinkHandlers(mainWindow: BrowserWindow | null) {
+export async function setupDeepLinkHandlers(mainWindow: BrowserWindow | null) {
   try {
     store = new Store({
       name: 'user-tokens',
@@ -34,8 +35,12 @@ export function setupDeepLinkHandlers(mainWindow: BrowserWindow | null) {
 
 
   const isLoggedIn = store?.get('isLoggedIn');
+  const userValid = await validateLogin()
   if (!isLoggedIn) {
     mainWindow.loadFile(path.join(app.getAppPath(), 'login.html'));
+  } else if (!userValid) {
+    await mainWindow.loadFile(path.join(app.getAppPath(), 'login.html'));
+    mainWindow.webContents.send('auth-logout');
   } else {
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
@@ -89,12 +94,16 @@ function handleDeepLink(urlStr: string, mainWindow: BrowserWindow | null) {
           body += chunk.toString();
         });
         response.on('end', () => {
-          const userData = JSON.parse(body);
-          if (mainWindow) {
+          const userData: {
+            [key: string]: any;
+          } = JSON.parse(body);
+          console.log('Received user data from token endpoint:', userData);
+          if (mainWindow && userData.token) {
             mainWindow.webContents.send('auth-success', userData);
+          } else {
+            mainWindow.webContents.send('auth-fail');
           }
         });
-        console.log('Response received from token endpoint:', body);
       });
       
       request.write(JSON.stringify({ code, redirect_uri: 'hourglass://' }));
@@ -117,16 +126,31 @@ export function getDeeplinkUrl() {
   return deeplinkUrl;
 }
 
-export function storeUserToken(userData: any) {
+export async function storeUserToken(userData: any) {
   try {
     if (!store) {
       throw new Error('Store not initialized');
+    }
+    let fetchedUserData : any = null;
+    try {
+      const res = await fetch('http://localhost:3000/api/v1/user/me', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${userData.token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+      fetchedUserData = await res.json();
+      console.log('Fetched user data from API:', fetchedUserData);
+    } catch (error) {
+      mainWindow.webContents.send('auth-fail');
     }
     store.set('userData', userData);
     store.set('isLoggedIn', true);
     log.info('User data stored successfully');
     console.log('Store contents after saving:', store.store);
-
+    startActiveWindowTracking()
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL!==undefined && MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
     } else {
@@ -165,6 +189,7 @@ export function clearUserToken() {
     log.info('User data cleared successfully');
     console.log('Store contents after clearing:', store.store);
     mainWindow.loadFile(path.join(app.getAppPath(), 'login.html'));
+    stopActiveWindowTracking()
     return { success: true };
   } catch (error: any) {
     log.error('Failed to clear user data:', error);
@@ -183,4 +208,33 @@ export function getLoginStatus() {
     log.error('Failed to get login status:', error);
     return { isLoggedIn: false };
   }
+}
+
+export async function validateLogin() {
+    try {
+        const { userData, isLoggedIn } = getUserToken();
+        if (!isLoggedIn || !userData) {
+        console.log('User is not logged in or user data is missing');
+        return false;
+        }
+        const res = await fetch('http://localhost:3000/api/v1/user/me', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${userData.token}`,
+            'Content-Type': 'application/json',
+        },
+        });
+
+        if (!res.ok) {
+        console.error(`Failed to validate login: ${res.status}`);
+        return false;
+        }
+
+        const fetchedUserData = await res.json();
+        console.log('Fetched user data from API:', fetchedUserData);
+        return true;
+    } catch (error) {
+        console.error('Error validating login:', error);
+        return false;
+    }
 }

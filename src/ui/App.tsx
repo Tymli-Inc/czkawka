@@ -10,7 +10,10 @@ declare global {
       compileData: () => Promise<{ success: boolean; data: { title: string; session_length: number }[] }>;
       login: () => Promise<void>;
       onAuthSuccess: (callback: (userData: any) => void) => void;
-      removeAuthListener: () => void;      storeUserToken: (userData: any) => Promise<{ success: boolean; error?: string }>;
+      onAuthFailure: (callback: () => void) => void;
+      onAuthLogout: (callback: () => void) => void;
+      removeAuthListener: () => void;
+      storeUserToken: (userData: any) => Promise<{ success: boolean; error?: string }>;
       getUserToken: () => Promise<{ userData: any | null; isLoggedIn: boolean }>;
       clearUserToken: () => Promise<{ success: boolean; error?: string }>;
       getLoginStatus: () => Promise<{ isLoggedIn: boolean }>;

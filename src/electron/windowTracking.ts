@@ -2,8 +2,11 @@ import path from 'path';
 import log from 'electron-log';
 import { app } from 'electron';
 import {db} from "./database";
+import {getLoginStatus} from "./auth";
+import {mainWindow} from "./main";
 
 let getActiveWindow: any;
+let trackingInterval: NodeJS.Timeout | null = null;
 const memoryStore = new Map();
 
 function loadGetWindows(): boolean {
@@ -40,6 +43,104 @@ function loadGetWindows(): boolean {
   return false;
 }
 
+async function trackActiveWindow() {
+  try {
+    if (!getActiveWindow) {
+      console.error('get-windows is not available');
+      return;
+    }
+
+    const activeWindowCurrent = await getActiveWindow();
+    if (activeWindowCurrent) {
+      const currentWindow = memoryStore.get('currentWindow');
+
+      if (currentWindow === undefined) {
+        // First time tracking
+        const newWindow = {
+          id: activeWindowCurrent.id,
+          startTime: Date.now(),
+          sessionDuration: 0,
+          title: activeWindowCurrent.owner.name
+        };
+        memoryStore.set('currentWindow', newWindow);
+
+        // Save to database immediately
+        await saveWindowToDatabase(newWindow);
+      } else if (currentWindow.id !== activeWindowCurrent.id) {
+        // Window changed - save previous and start new
+        const finalSessionDuration = currentWindow.sessionDuration + (Date.now() - currentWindow.startTime);
+        await updateWindowSessionDuration(currentWindow.startTime, finalSessionDuration);
+
+        memoryStore.set('previousWindow', { ...currentWindow, sessionDuration: finalSessionDuration });
+
+        const newWindow = {
+          id: activeWindowCurrent.id,
+          startTime: Date.now(),
+          sessionDuration: 0,
+          title: activeWindowCurrent.owner.name
+        };
+        memoryStore.set('currentWindow', newWindow);
+
+        // Save new window to database
+        await saveWindowToDatabase(newWindow);
+      } else {
+        // Same window - update session duration
+        const updatedSessionDuration = Date.now() - currentWindow.startTime;
+        memoryStore.set('currentWindow', {
+          ...currentWindow,
+          sessionDuration: updatedSessionDuration
+        });
+
+        // Update database every tracking cycle
+        await updateWindowSessionDuration(currentWindow.startTime, updatedSessionDuration);
+      }
+
+    } else {
+      console.log('No active window found');
+    }
+  } catch (error) {
+    console.error('Error tracking active window:', error);
+  }
+}
+
+async function saveWindowToDatabase(windowData: any) {
+  try {
+    const stmt = db.prepare(
+        'INSERT INTO active_windows (title, unique_id, timestamp, session_length) VALUES (?, ?, ?, ?)'
+    );
+    stmt.run(windowData.title, windowData.id, windowData.startTime, 0);
+  } catch (error) {
+    console.error('Error saving window to database:', error);
+  }
+}
+
+async function updateWindowSessionDuration(timestamp: number, sessionDuration: number) {
+  try {
+    const updateStmt = db.prepare(
+        'UPDATE active_windows SET session_length = ? WHERE timestamp = ?'
+    );
+    const result = updateStmt.run(sessionDuration, timestamp);
+  } catch (error) {
+    console.error('Error updating session duration:', error);
+  }
+}
+
+export function startActiveWindowTracking() {
+  console.log('Starting active window tracking...');
+
+  trackActiveWindow();
+
+  trackingInterval = setInterval(trackActiveWindow, 1000);
+}
+
+export function stopActiveWindowTracking() {
+  if (trackingInterval) {
+    clearInterval(trackingInterval);
+    trackingInterval = null;
+    console.log('Active window tracking stopped');
+  }
+}
+
 export function initializeWindowTracking(): void {
   try {
     loadGetWindows();
@@ -47,106 +148,10 @@ export function initializeWindowTracking(): void {
     console.error('Critical error loading get-windows module:', error);
   }
 
-  let trackingInterval: NodeJS.Timeout | null = null;
-
-  function startActiveWindowTracking() {
-    console.log('Starting active window tracking...');
-
-    trackActiveWindow();
-
-    trackingInterval = setInterval(trackActiveWindow, 1000);
+  if (getLoginStatus()) {
+    console.log('User is logged in, starting active window tracking...');
+    startActiveWindowTracking();
   }
-
-  function stopActiveWindowTracking() {
-    if (trackingInterval) {
-      clearInterval(trackingInterval);
-      trackingInterval = null;
-      console.log('Active window tracking stopped');
-    }
-  }
-
-  async function trackActiveWindow() {
-    try {
-      if (!getActiveWindow) {
-        console.error('get-windows is not available');
-        return;
-      }
-
-      const activeWindowCurrent = await getActiveWindow();
-      if (activeWindowCurrent) {
-        const currentWindow = memoryStore.get('currentWindow');
-
-        if (currentWindow === undefined) {
-          // First time tracking
-          const newWindow = {
-            id: activeWindowCurrent.id,
-            startTime: Date.now(),
-            sessionDuration: 0,
-            title: activeWindowCurrent.owner.name
-          };
-          memoryStore.set('currentWindow', newWindow);
-
-          // Save to database immediately
-          await saveWindowToDatabase(newWindow);
-        } else if (currentWindow.id !== activeWindowCurrent.id) {
-          // Window changed - save previous and start new
-          const finalSessionDuration = currentWindow.sessionDuration + (Date.now() - currentWindow.startTime);
-          await updateWindowSessionDuration(currentWindow.startTime, finalSessionDuration);
-
-          memoryStore.set('previousWindow', { ...currentWindow, sessionDuration: finalSessionDuration });
-
-          const newWindow = {
-            id: activeWindowCurrent.id,
-            startTime: Date.now(),
-            sessionDuration: 0,
-            title: activeWindowCurrent.owner.name
-          };
-          memoryStore.set('currentWindow', newWindow);
-
-          // Save new window to database
-          await saveWindowToDatabase(newWindow);
-        } else {
-          // Same window - update session duration
-          const updatedSessionDuration = Date.now() - currentWindow.startTime;
-          memoryStore.set('currentWindow', {
-            ...currentWindow,
-            sessionDuration: updatedSessionDuration
-          });
-
-          // Update database every tracking cycle
-          await updateWindowSessionDuration(currentWindow.startTime, updatedSessionDuration);
-        }
-
-      } else {
-        console.log('No active window found');
-      }
-    } catch (error) {
-      console.error('Error tracking active window:', error);
-    }
-  }
-  async function saveWindowToDatabase(windowData: any) {
-    try {
-      const stmt = db.prepare(
-          'INSERT INTO active_windows (title, unique_id, timestamp, session_length) VALUES (?, ?, ?, ?)'
-      );
-      stmt.run(windowData.title, windowData.id, windowData.startTime, 0);
-    } catch (error) {
-      console.error('Error saving window to database:', error);
-    }
-  }
-
-  async function updateWindowSessionDuration(timestamp: number, sessionDuration: number) {
-    try {
-      const updateStmt = db.prepare(
-          'UPDATE active_windows SET session_length = ? WHERE timestamp = ?'
-      );
-      const result = updateStmt.run(sessionDuration, timestamp);
-    } catch (error) {
-      console.error('Error updating session duration:', error);
-    }
-  }
-
-  startActiveWindowTracking()
 
   app.on('window-all-closed', () => {
     const currentWindow = memoryStore.get('currentWindow');

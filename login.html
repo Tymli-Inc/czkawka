@@ -10,7 +10,8 @@
       box-sizing: border-box;
     }
     
-    body { 
+    body {
+        position: relative;
       font-family: "Roboto", sans-serif; 
       display: flex; 
       height: 100vh; 
@@ -188,10 +189,10 @@
         transform: translateY(0);
       }
     }
-    
   </style>
 </head>
-<body>  <div id="container">
+<body>
+<div id="container">
     <div class="header">
         <div class="logo"></div>
         <h1>Hourglass</h1>        
@@ -219,9 +220,20 @@
     window.electronAPI.onAuthSuccess(async (userData) => {
       console.log('Authentication successful:', userData); 
       try {
+
         await window.electronAPI.storeUserToken(userData);
       } catch (err) {}
     });
+    window.electronAPI.onAuthFailure(async () => {
+        alert('Failed to authenticate, please try again.');
+    })
+    window.electronAPI.onAuthLogout(async () => {
+        console.log('User logged out');
+        try {
+            await window.electronAPI.clearUserToken();
+        } catch (err) {}
+        alert('You have been logged out. Please login again.');
+    })
   </script>
 </body>
 </html>
