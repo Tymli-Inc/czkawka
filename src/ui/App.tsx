@@ -10,7 +10,10 @@ declare global {
       compileData: () => Promise<{ success: boolean; data: { title: string; session_length: number }[] }>;
       login: () => Promise<void>;
       onAuthSuccess: (callback: (userData: any) => void) => void;
-      removeAuthListener: () => void;
+      removeAuthListener: () => void;      storeUserToken: (userData: any) => Promise<{ success: boolean; error?: string }>;
+      getUserToken: () => Promise<{ userData: any | null; isLoggedIn: boolean }>;
+      clearUserToken: () => Promise<{ success: boolean; error?: string }>;
+      getLoginStatus: () => Promise<{ isLoggedIn: boolean }>;
     };
   }
 }
@@ -41,46 +44,57 @@ const App = () => {
       setError('Failed to initiate login');
       setIsLoggingIn(false);
     }
+  };  
+  const handleLogout = async () => {
+    try {
+      await window.electronAPI.clearUserToken();
+      setUser(null);
+      console.log('User logged out successfully');
+    } catch (err) {
+      console.error('Error during logout:', err);
+    }
   };
-
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('userData');
+  const loadStoredUser = async () => {
+    try {
+      const { userData, isLoggedIn } = await window.electronAPI.getUserToken();
+      if (isLoggedIn && userData) {
+        console.log('Found stored user data:', userData);
+        setUser(userData);
+      }
+    } catch (err) {
+      console.error('Error loading stored user:', err);
+    }
   };
   useEffect(() => {
-    const storedUser = localStorage.getItem('userData');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (err) {
-        console.error('Error parsing stored user data:', err);
-        localStorage.removeItem('userData');
-      }
-    }
-
-    window.electronAPI.onAuthSuccess((userData) => {
+    loadStoredUser();    
+    window.electronAPI.onAuthSuccess(async (userData) => {
       console.log('Authentication successful:', userData);
       setUser(userData);
       setIsLoggingIn(false);
-      localStorage.setItem('userData', JSON.stringify(userData));
+      
+      try {
+        await window.electronAPI.storeUserToken(userData);
+        console.log('User data stored successfully');
+      } catch (err) {
+        console.error('Error storing user data:', err);
+      }
     });
 
     return () => {
       window.electronAPI.removeAuthListener();
     };
   }, []);
-
   useEffect(() => {
     async function fetchActiveWindow() {
       try {
         const data = await window.electronAPI.getActiveWindow();
-          if (data && 'error' in data) {
+        if (data && 'error' in data) {
           console.error('Error from main process:', data.error);
           setError(String(data.error || 'Unknown error'));
-          setActiveWindow(null);        } else if (data) {
+          setActiveWindow(null);
+        } else if (data) {
           setActiveWindow(data);
           setError(null);
-          await window.electronAPI.saveActiveWindow({ title: data.title, unique_id: data.id });
         } else {
           setActiveWindow(null);
           setError(null);
@@ -94,11 +108,14 @@ const App = () => {
 
     fetchActiveWindow();
 
-    const interval = setInterval(fetchActiveWindow, 5000);
-    return () => clearInterval(interval);  }, []);
+    const interval = setInterval(fetchActiveWindow, 1000);
+    return () => clearInterval(interval);  
+  }, []);
+
   useEffect(() => {
     refreshHistory();
-  }, []);  return (
+  }, []);  
+  return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>Active Window Tracker</h1>
       
@@ -138,15 +155,17 @@ const App = () => {
               >
                 Logout
               </button>
-            </div>
-            {activeWindow ? (
+            </div>            {activeWindow ? (
             <div>
-                <h2>Current Active Window</h2>
+                <h2>Currently Tracking</h2>
                 <p>Title: {activeWindow.title}</p>
-                <p>id: {activeWindow.id}</p>
+                <p>ID: {activeWindow.id}</p>
+                <p style={{ color: '#4CAF50', fontSize: '14px' }}>
+                  ✓ Automatic tracking is active (updates every second)
+                </p>
             </div>
             ) : (
-              <p>No active window detected</p>
+              <p>No active window detected (tracking will start automatically)</p>
             )}
             <div>
               <h2>Compile Data</h2>

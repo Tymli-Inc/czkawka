@@ -22,7 +22,11 @@ interface ElectronAPI {
   compileData: () => Promise<any>;
   login: () => Promise<void>;
   onAuthSuccess: (callback: (userData: UserData) => void) => void;
-  removeAuthListener: () => void;
+  removeAuthListener: () => void;  // Token management APIs
+  storeUserToken: (userData: UserData) => Promise<{ success: boolean; error?: string }>;
+  getUserToken: () => Promise<{ userData: UserData | null; isLoggedIn: boolean }>;
+  clearUserToken: () => Promise<{ success: boolean; error?: string }>;
+  getLoginStatus: () => Promise<{ isLoggedIn: boolean }>;
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -51,5 +55,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   removeAuthListener: () => {
     ipcRenderer.removeAllListeners('auth-success');
+  },
+  // Token management APIs
+  storeUserToken: async (userData: UserData): Promise<{ success: boolean; error?: string }> => {
+    return await ipcRenderer.invoke('store-user-token', userData);
+  },
+
+  getUserToken: async (): Promise<{ userData: UserData | null; isLoggedIn: boolean }> => {
+    return await ipcRenderer.invoke('get-user-token');
+  },
+
+  clearUserToken: async (): Promise<{ success: boolean; error?: string }> => {
+    return await ipcRenderer.invoke('clear-user-token');
+  },
+
+  getLoginStatus: async (): Promise<{ isLoggedIn: boolean }> => {
+    return await ipcRenderer.invoke('get-login-status');
   }
 } as ElectronAPI);

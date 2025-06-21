@@ -1,14 +1,20 @@
 import path from 'path';
 import log from 'electron-log';
+import Store from 'electron-store';
 import App = Electron.App;
 interface AppExtended extends App {
     isQuiting: boolean;
 }
 import { app as appBase, BrowserWindow, ipcMain, Tray, Menu, shell } from 'electron';
 import { IncomingMessage } from 'http';
-import { c } from 'vite/dist/node/types.d-aGj9QkWt';
 const app = appBase as AppExtended;
 app.isQuiting = false;
+
+// Set app name for consistent user data directory
+app.setName('Hourglass');
+
+// Declare store variable - will be initialized after app is ready
+let store: any;
 
 let getActiveWindow: any;
 let BetterSqlite3: any;
@@ -94,7 +100,6 @@ function getTrayIconPath() {
     return path.join(__dirname, '..','..', 'assets','icons', 'tray.png');
   }
 }
-console.log(getTrayIconPath());
 try {
   loadGetWindows();
   loadBetterSqlite3();
@@ -119,12 +124,17 @@ function createWindow() {
     },
   });
 
-  // In development, use the Vite dev server
-  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+  // Load either login page or React app based on login state
+  const isLoggedIn = store?.get('isLoggedIn');
+  if (!isLoggedIn) {
+    // Render static login page
+    mainWindow.loadFile(path.join(app.getAppPath(), 'login.html'));
   } else {
-    // In production, load the built files
-    mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    } else {
+      mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+    }
   }
 
   if (!app.isPackaged) {
@@ -165,13 +175,25 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(() => {  // Initialize electron-store after app is ready
+  try {    store = new Store({
+      name: 'user-tokens',
+      defaults: {
+        userData: null,
+        isLoggedIn: false
+      }
+    });
+    
+    // Log store path for debugging
+    console.log('Electron Store path:', store.path);
+    console.log('Initial store contents:', store.store);
+  } catch (error) {
+    console.error('Failed to initialize electron-store:', error);
+  }
+  
   try {
-    // ✅ Init DB first
     const dbPath = path.join(app.getPath('userData'), 'appdata.sqlite');
     console.log('DB Path:', dbPath);
-    
-    // Use dynamically loaded better-sqlite3
     if (!BetterSqlite3) {
       throw new Error('better-sqlite3 module not available');
     }
@@ -191,33 +213,87 @@ app.whenReady().then(() => {
   } catch (error) {
     console.error('Database initialization error:', error);
   }
-
   ipcMain.handle('save-active-window', (event, windowData) => {
-    const updateStmt = db.prepare(
-        'UPDATE active_windows SET session_length = ? WHERE timestamp = ?'
-    );
-    const currentWindow = memoryStore.get('currentWindow');
-    let updateOut = null;
-    if (currentWindow) {
-      updateOut = updateStmt.run(currentWindow.sessionDuration, currentWindow.startTime);
-      console.log('Updated session length for window:', currentWindow.startTime);
-    }
-    console.log(updateOut)
-    if (updateOut && updateOut.changes === 0) {
-      console.log('No rows updated, inserting new window data');
-      const stmt = db.prepare(
-          'INSERT INTO active_windows (title, unique_id, timestamp) VALUES (?, ?, ?)'
-      );
-      const out = stmt.run(windowData.title, windowData.unique_id, currentWindow.startTime);
-    }
+    // This handler is now mainly for manual saves from the renderer
+    // Most saving is handled automatically by the tracking system
+    console.log('Manual save requested for window:', windowData.title);
     return { success: true };
   });
-
   ipcMain.handle('get-active-windows', () => {
     return db.prepare('SELECT * FROM active_windows ORDER BY timestamp DESC LIMIT 100').all();
   });
+  // Token management IPC handlers - moved inside app.whenReady()
+  ipcMain.handle('store-user-token', (event, userData: any) => {
+    try {
+        if (!store) {
+            throw new Error('Store not initialized');
+        }        store.set('userData', userData);
+        store.set('isLoggedIn', true);
+        log.info('User data stored successfully');
+        console.log('Store contents after saving:', store.store);
+        
+        if (MAIN_WINDOW_VITE_DEV_SERVER_URL!==undefined && MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+            mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+        } else {
+            const prodPath = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`);
+            mainWindow.loadFile(prodPath);
+        }
+        return { success: true };
+    } catch (error: any) {
+        log.error('Failed to store user data:', error);
+        return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('get-user-token', () => {
+    try {
+        if (!store) {
+            throw new Error('Store not initialized');
+        }
+        const userData = store.get('userData') as any;
+        const isLoggedIn = store.get('isLoggedIn', false) as boolean;
+        console.log('Retrieved from store - userData exists:', !!userData, 'isLoggedIn:', isLoggedIn);
+        return { userData, isLoggedIn };
+    } catch (error: any) {
+        log.error('Failed to get user data:', error);
+        return { userData: null, isLoggedIn: false };
+    }
+  });
+
+  ipcMain.handle('clear-user-token', () => {
+    try {
+        if (!store) {
+            throw new Error('Store not initialized');
+        }
+        store.set('userData', null);
+        store.set('isLoggedIn', false);
+        log.info('User data cleared successfully');
+        console.log('Store contents after clearing:', store.store);
+        mainWindow.loadFile(path.join(app.getAppPath(), 'login.html'));
+        return { success: true };
+    } catch (error: any) {
+        log.error('Failed to clear user data:', error);
+        return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('get-login-status', () => {
+    try {
+        if (!store) {
+            throw new Error('Store not initialized');
+        }
+        const isLoggedIn = store.get('isLoggedIn', false) as boolean;
+        return { isLoggedIn };
+    } catch (error: any) {
+        log.error('Failed to get login status:', error);
+        return { isLoggedIn: false };
+    }
+  });
 
   createWindow();
+  
+  // Start tracking active windows automatically
+  startActiveWindowTracking();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -229,46 +305,16 @@ app.whenReady().then(() => {
 
 ipcMain.handle('get-active-window', async () => {
   try {
-    if (!getActiveWindow) {
-      console.error('get-windows is not available');
-      return { error: 'get-windows module not available' + '. Path used:' + process.resourcesPath };
-    }
-
-    const activeWindowCurrent = await getActiveWindow();
-    if (activeWindowCurrent) {
-      const currentWindow = memoryStore.get('currentWindow');
-      if(currentWindow === undefined) {
-        memoryStore.set('currentWindow', {
-          id: activeWindowCurrent.id,
-          startTime: Date.now(),
-          sessionDuration: 0
-        });
-      }
-      if(currentWindow.id !== activeWindowCurrent.id) {
-        memoryStore.set('previousWindow', currentWindow);
-        memoryStore.set('currentWindow', {
-          id: activeWindowCurrent.id,
-          startTime: Date.now(),
-          sessionDuration: 0
-        });
-      } else {
-        memoryStore.set('currentWindow', {
-          ...currentWindow,
-            sessionDuration: currentWindow.sessionDuration + (Date.now() - currentWindow.startTime)
-        });
-      }
-      
-
-      console.log('Current window ID stored:', memoryStore.get('currentWindow'));
-      console.log('Previous window ID stored:', memoryStore.get('previousWindow'));
+    // Return the current window being tracked
+    const currentWindow = memoryStore.get('currentWindow');
+    if (currentWindow) {
       return {
-        title: activeWindowCurrent.owner.name,
-        id: activeWindowCurrent.id,
-        owner: activeWindowCurrent.owner
+        title: currentWindow.title,
+        id: currentWindow.id,
       };
     }
     
-    console.log('No active window found');
+    console.log('No active window being tracked');
     return null;
   } catch (error) {
     console.error('Error getting active window:', error);
@@ -345,7 +391,6 @@ function handleDeepLink(urlStr: string) {
         if (code) {
             const { net } = require('electron');
             
-            // Use different URLs based on environment
             const authUrl = app.isPackaged 
                 ? 'https://hourglass-auth.onrender.com/auth/token'
                 : 'http://localhost:3000/auth/token';
@@ -386,7 +431,148 @@ ipcMain.handle('login', () => {
 });
 
 app.on('window-all-closed', () => {
+  // Save final session before quitting
+  const currentWindow = memoryStore.get('currentWindow');
+  if (currentWindow) {
+    const finalSessionDuration = currentWindow.sessionDuration + (Date.now() - currentWindow.startTime);
+    updateWindowSessionDuration(currentWindow.startTime, finalSessionDuration);
+  }
+  
+  stopActiveWindowTracking();
+  
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
+
+app.on('before-quit', () => {
+  // Save final session before quitting
+  const currentWindow = memoryStore.get('currentWindow');
+  if (currentWindow) {
+    const finalSessionDuration = currentWindow.sessionDuration + (Date.now() - currentWindow.startTime);
+    updateWindowSessionDuration(currentWindow.startTime, finalSessionDuration);
+  }
+  
+  stopActiveWindowTracking();
+});
+
+let trackingInterval: NodeJS.Timeout | null = null;
+
+// Function to start automatic tracking
+function startActiveWindowTracking() {
+  console.log('Starting active window tracking...');
+  
+  // Initial fetch
+  trackActiveWindow();
+  
+  // Set up interval to track every 5 seconds
+  trackingInterval = setInterval(trackActiveWindow, 1000);
+}
+
+// Function to stop tracking
+function stopActiveWindowTracking() {
+  if (trackingInterval) {
+    clearInterval(trackingInterval);
+    trackingInterval = null;
+    console.log('Active window tracking stopped');
+  }
+}
+
+// Main tracking function
+async function trackActiveWindow() {
+  try {
+    if (!getActiveWindow) {
+      console.error('get-windows is not available');
+      return;
+    }
+
+    const activeWindowCurrent = await getActiveWindow();
+    if (activeWindowCurrent) {
+      const currentWindow = memoryStore.get('currentWindow');
+      
+      if (currentWindow === undefined) {
+        // First time tracking
+        const newWindow = {
+          id: activeWindowCurrent.id,
+          startTime: Date.now(),
+          sessionDuration: 0,
+          title: activeWindowCurrent.owner.name
+        };
+        memoryStore.set('currentWindow', newWindow);
+        
+        // Save to database immediately
+        await saveWindowToDatabase(newWindow);
+      } else if (currentWindow.id !== activeWindowCurrent.id) {
+        // Window changed - save previous and start new
+        const finalSessionDuration = currentWindow.sessionDuration + (Date.now() - currentWindow.startTime);
+        await updateWindowSessionDuration(currentWindow.startTime, finalSessionDuration);
+        
+        memoryStore.set('previousWindow', { ...currentWindow, sessionDuration: finalSessionDuration });
+        
+        const newWindow = {
+          id: activeWindowCurrent.id,
+          startTime: Date.now(),
+          sessionDuration: 0,
+          title: activeWindowCurrent.owner.name
+        };
+        memoryStore.set('currentWindow', newWindow);
+        
+        // Save new window to database
+        await saveWindowToDatabase(newWindow);
+      } else {
+        // Same window - update session duration
+        const updatedSessionDuration = Date.now() - currentWindow.startTime;
+        memoryStore.set('currentWindow', {
+          ...currentWindow,
+          sessionDuration: updatedSessionDuration
+        });
+        
+        // Update database every tracking cycle
+        await updateWindowSessionDuration(currentWindow.startTime, updatedSessionDuration);
+      }
+      
+    } else {
+      console.log('No active window found');
+    }
+  } catch (error) {
+    console.error('Error tracking active window:', error);
+  }
+}
+
+// Helper function to save window to database
+async function saveWindowToDatabase(windowData: any) {
+  try {
+    const stmt = db.prepare(
+      'INSERT INTO active_windows (title, unique_id, timestamp, session_length) VALUES (?, ?, ?, ?)'
+    );
+    stmt.run(windowData.title, windowData.id, windowData.startTime, 0);
+  } catch (error) {
+    console.error('Error saving window to database:', error);
+  }
+}
+
+async function updateWindowSessionDuration(timestamp: number, sessionDuration: number) {
+  try {
+    const updateStmt = db.prepare(
+      'UPDATE active_windows SET session_length = ? WHERE timestamp = ?'
+    );
+    const result = updateStmt.run(sessionDuration, timestamp);
+  } catch (error) {
+    console.error('Error updating session duration:', error);
+  }
+}
+
+// Alternative store initialization with explicit path (if needed)
+  /*
+  const userDataPath = app.getPath('userData');
+  store = new Store({
+    name: 'user-tokens',
+    cwd: userDataPath,
+    defaults: {
+      userData: null,
+      isLoggedIn: false
+    },
+    serialize: JSON.stringify,
+    deserialize: JSON.parse
+  });
+  */
