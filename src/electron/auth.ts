@@ -1,0 +1,186 @@
+import path from 'path';
+import { app, shell, BrowserWindow } from 'electron';
+import { IncomingMessage } from 'http';
+import {mainWindow} from "./main";
+import Store from 'electron-store';
+import log from "electron-log";
+let store: any;
+
+const protocol = 'hourglass';
+let deeplinkUrl: string | null = null;
+
+export function setupProtocolHandling() {
+  if (app.isPackaged) {
+    app.setAsDefaultProtocolClient(protocol);
+  } else {
+    app.setAsDefaultProtocolClient(protocol, process.execPath, [path.resolve(process.argv[1])]);
+  }
+}
+
+export function setupDeepLinkHandlers(mainWindow: BrowserWindow | null) {
+  try {
+    store = new Store({
+      name: 'user-tokens',
+      defaults: {
+        userData: null,
+        isLoggedIn: false
+      }
+    });
+    console.log('Electron Store path:', store.path);
+    console.log('Initial store contents:', store.store);
+  } catch (error) {
+    console.error('Failed to initialize electron-store:', error);
+  }
+
+
+  const isLoggedIn = store?.get('isLoggedIn');
+  if (!isLoggedIn) {
+    mainWindow.loadFile(path.join(app.getAppPath(), 'login.html'));
+  } else {
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    } else {
+      mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+    }
+  }
+
+
+  app.on('second-instance', (event, argv) => {
+    const urlArg = argv.find(arg => arg.startsWith('hourglass://'));
+    if (urlArg) {
+      deeplinkUrl = urlArg;
+      handleDeepLink(urlArg, mainWindow);
+      mainWindow?.show();
+      mainWindow?.focus();
+    }
+  });
+
+  app.on('open-url', (event, urlStr) => {
+    event.preventDefault();
+    deeplinkUrl = urlStr;
+    handleDeepLink(urlStr, mainWindow);
+    mainWindow?.show();
+    mainWindow?.focus();
+  });
+}
+
+function handleDeepLink(urlStr: string, mainWindow: BrowserWindow | null) {
+  try {
+    const urlObj = new URL(urlStr);
+    const code = urlObj.searchParams.get('code');
+    console.log('Received deep link URL:', urlStr);
+    
+    if (code) {
+      const { net } = require('electron');
+      
+      const authUrl = app.isPackaged 
+        ? 'https://hourglass-auth.onrender.com/auth/token'
+        : 'http://localhost:3000/auth/token';
+      
+      const request = net.request({
+        method: 'POST',
+        url: authUrl,
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      request.on('response', (response: IncomingMessage) => {
+        let body = '';
+        response.on('data', (chunk: Buffer) => {
+          body += chunk.toString();
+        });
+        response.on('end', () => {
+          const userData = JSON.parse(body);
+          if (mainWindow) {
+            mainWindow.webContents.send('auth-success', userData);
+          }
+        });
+        console.log('Response received from token endpoint:', body);
+      });
+      
+      request.write(JSON.stringify({ code, redirect_uri: 'hourglass://' }));
+      request.end();
+    }
+  } catch (err) {
+    console.error('Failed to handle deep link', err);
+  }  
+}
+
+export function handleLogin() {
+  const authUrl = app.isPackaged 
+    ? 'https://hourglass-auth.onrender.com/auth/google'
+    : 'http://localhost:3000/auth/google';
+  
+  shell.openExternal(authUrl);
+}
+
+export function getDeeplinkUrl() {
+  return deeplinkUrl;
+}
+
+export function storeUserToken(userData: any) {
+  try {
+    if (!store) {
+      throw new Error('Store not initialized');
+    }
+    store.set('userData', userData);
+    store.set('isLoggedIn', true);
+    log.info('User data stored successfully');
+    console.log('Store contents after saving:', store.store);
+
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL!==undefined && MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+      mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    } else {
+      const prodPath = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`);
+      mainWindow.loadFile(prodPath);
+    }
+    return { success: true };
+  } catch (error: any) {
+    log.error('Failed to store user data:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export function getUserToken() {
+  try {
+    if (!store) {
+      throw new Error('Store not initialized');
+    }
+    const userData = store.get('userData') as any;
+    const isLoggedIn = store.get('isLoggedIn', false) as boolean;
+    console.log('Retrieved from store - userData exists:', !!userData, 'isLoggedIn:', isLoggedIn);
+    return { userData, isLoggedIn };
+  } catch (error: any) {
+    log.error('Failed to get user data:', error);
+    return { userData: null, isLoggedIn: false };
+  }
+}
+
+export function clearUserToken() {
+  try {
+    if (!store) {
+      throw new Error('Store not initialized');
+    }
+    store.set('userData', null);
+    store.set('isLoggedIn', false);
+    log.info('User data cleared successfully');
+    console.log('Store contents after clearing:', store.store);
+    mainWindow.loadFile(path.join(app.getAppPath(), 'login.html'));
+    return { success: true };
+  } catch (error: any) {
+    log.error('Failed to clear user data:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export function getLoginStatus() {
+  try {
+    if (!store) {
+      throw new Error('Store not initialized');
+    }
+    const isLoggedIn = store.get('isLoggedIn', false) as boolean;
+    return { isLoggedIn };
+  } catch (error: any) {
+    log.error('Failed to get login status:', error);
+    return { isLoggedIn: false };
+  }
+}

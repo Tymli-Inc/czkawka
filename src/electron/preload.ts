@@ -33,9 +33,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getActiveWindow: async (): Promise<any> => {
     return await ipcRenderer.invoke('get-active-window');
   },
-  saveActiveWindow: async (windowData: ActiveWindowData): Promise<any> => {
-    return await ipcRenderer.invoke('save-active-window', windowData);
-  },
 
   getActiveWindows: async () => {
     return await ipcRenderer.invoke('get-active-windows');
