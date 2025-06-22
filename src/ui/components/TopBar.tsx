@@ -1,9 +1,14 @@
 import React, { useState, useEffect, CSSProperties } from 'react';
-
+import styles from "./topbar.module.css"; 
+import { Link, useLocation } from 'react-router-dom';
+import hourglassLogo from '../../../assets/icons/hourglass.png';
 const TopBar = () => {
   const [isMaximized, setIsMaximized] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const location = useLocation();
+  
+  
   useEffect(() => {
-    // Check if window is maximized on mount
     const checkMaximized = async () => {
       if (window.electronAPI) {
         const maximized = await window.electronAPI.windowIsMaximized();
@@ -12,14 +17,12 @@ const TopBar = () => {
     };
     checkMaximized();
 
-    // Listen for window maximize/unmaximize events
     if (window.electronAPI?.onWindowMaximized) {
       window.electronAPI.onWindowMaximized((maximized: boolean) => {
         setIsMaximized(maximized);
       });
     }
 
-    // Cleanup listener on unmount
     return () => {
       if (window.electronAPI?.removeWindowListener) {
         window.electronAPI.removeWindowListener();
@@ -47,11 +50,40 @@ const TopBar = () => {
     }
   };
 
+  const loadStoredUser = async () => {
+    try {
+      const { userData, isLoggedIn } = await window.electronAPI.getUserToken();
+      if (isLoggedIn && userData) {
+        setUser(userData);
+      }
+    } catch (err) {}
+  };
+  useEffect(() => {
+    loadStoredUser();
+  }, []);
+  function UserBar() {
+
+    
+    return (
+      <Link to="/settings" style={{
+        textDecoration: 'none',
+      }} className={styles.userBar}>
+        {user ? (
+          <div className={styles.userInfo}>
+            <img src={user.image || hourglassLogo} alt="User Avatar" className={styles.userAvatar} />
+            <p>{user.name}</p>
+          </div>
+        ) : (
+          <button onClick={window.electronAPI?.login}>Login</button>
+        )}
+      </Link>
+    );
+  }
+
+
   const titleBarStyle: CSSProperties = {
     width: '100%',
-    height: '40px',
-    backgroundColor: '#1a1a1a',
-    borderBottom: '1px solid #333',
+    height: '52px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -68,7 +100,7 @@ const TopBar = () => {
 
   const buttonBaseStyle: CSSProperties = {
     width: '46px',
-    height: '40px',
+    height: '52px',
     backgroundColor: 'transparent',
     border: 'none',
     color: '#ccc',
@@ -84,21 +116,36 @@ const TopBar = () => {
       style={titleBarStyle}
       onDoubleClick={handleMaximize} // Double-click to maximize/restore
     >
-      <div>
-        <h3 style={{ marginLeft: 15, fontSize: 14, color: 'white' }}>Hourglass</h3>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        cursor: 'pointer',
+        // @ts-ignore
+        WebkitAppRegion: 'drag',
+      }}>        <img
+          src={hourglassLogo}
+          alt="Hourglass Logo"
+          style={{ width: 27, height: 27, marginLeft: 27 }}
+        />
+        <h3 style={{ marginLeft: 15, fontWeight: 100, fontSize: 12, color: 'white' }}>Hourglass</h3>
       </div>
       <div style={{ 
         display: 'flex', 
         alignItems: 'center', 
         gap: '10px' 
       }}>
-        <span style={{ 
+        <div style={{ 
           color: '#ccc', 
           fontSize: '14px',
-          marginRight: '20px'
-        }}>
-          Window Tracking Application
-        </span>
+          marginRight: '20px',
+          // @ts-ignore
+          WebkitAppRegion: 'no-drag',
+          backgroundColor: location.pathname === '/settings' ? 'rgba(255, 255, 255, 0.1)' : 'inherit',
+        }}
+          className={styles.title}
+        >
+          <UserBar />
+        </div>
         
         {/* Window Control Buttons */}
         <div style={windowControlsStyle}>          {/* Minimize Button */}

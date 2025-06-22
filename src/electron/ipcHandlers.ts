@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import {  } from './database';
 import { getCurrentActiveWindow, getActiveWindows, compileWindowData } from './windowTracking';
-import {clearUserToken, getLoginStatus, getUserToken, handleLogin, storeUserToken} from './auth';
+import {clearUserToken, getLoginStatus, getUserToken, handleLogin, storeUserToken, getUserData} from './auth';
 
 export function setupIpcHandlers() {
   ipcMain.handle('get-active-windows', () => {
@@ -11,10 +11,9 @@ export function setupIpcHandlers() {
   ipcMain.handle('get-active-window', async () => {
     return await getCurrentActiveWindow();
   });
-
-  ipcMain.handle('compile-data', async () => {
+  ipcMain.handle('compile-data', async (event, days?: number) => {
     try {
-      return compileWindowData();
+      return compileWindowData(days);
     } catch (error) {
       console.error('Error compiling data:', error);
       return {
@@ -42,6 +41,10 @@ export function setupIpcHandlers() {
   });
   ipcMain.handle('get-login-status', () => {
     return getLoginStatus()
+  });
+
+  ipcMain.handle('get-user-data', () => {
+    return getUserData();
   });
 
   ipcMain.handle('window-minimize', () => {

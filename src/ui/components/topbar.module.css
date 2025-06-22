@@ -1,0 +1,53 @@
+.userBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+
+.userInfo {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    color: white;
+    .userAvatar {
+        width: 27px;
+        height: 27px;
+        border-radius: 10px;
+        background-color: #555555;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+    }
+    p {
+        font-size: 14px;
+        color: white;
+        margin: 0;
+    }
+}
+
+.title {
+    cursor: pointer;
+    padding: 7px 10px;
+    border-radius: 12px;
+    background-color: #6161612a;
+    transition: all 0.2s ease;
+}
+
+
+.title:hover {
+    font-size: 1.2rem;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    background-color: #303030;
+}
+
+.title:active {
+    background-color: #404040;
+    opacity: 0.6;
+    transform: scale(0.9);
+}

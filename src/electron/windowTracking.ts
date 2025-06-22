@@ -210,10 +210,21 @@ export function getActiveWindows() {
   return db.prepare('SELECT * FROM active_windows ORDER BY timestamp DESC LIMIT 100').all();
 }
 
-export function compileWindowData() {
-  const dataPool = db.prepare('SELECT title, SUM(session_length) FROM active_windows GROUP BY title').all();
+export function compileWindowData(days?: number) {
+  let query = 'SELECT title, SUM(session_length) FROM active_windows';
+  let params: any[] = [];
+  
+  if (days && days > 0) {
+    const daysAgoTimestamp = Date.now() - (days * 24 * 60 * 60 * 1000);
+    query += ' WHERE timestamp >= ?';
+    params.push(daysAgoTimestamp);
+  }
+  
+  query += ' GROUP BY title';
+  
+  const dataPool = db.prepare(query).all(...params);
 
-  console.log('Data pool:', dataPool);
+  console.log('Data pool:', dataPool.length);
   return {
     success: true,
     data: dataPool.map((item: any) => ({

@@ -6,6 +6,8 @@ import HomePage from './pages/HomePage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import AboutPage from './pages/AboutPage';
+import ScreentimePage from './pages/ScreentimePage';
+import CategoriesPage from './pages/CategoriesPage';
 
 declare global {
   interface Window {
@@ -13,14 +15,14 @@ declare global {
       getActiveWindow: () => Promise<{ title: string ; id: number ; error?: string} | null>;
       saveActiveWindow: (data: { title: string; unique_id: number; error?: string }) => Promise<{ success: boolean }>;
       getActiveWindows: () => Promise<Array<{ id: number; title: string; unique_id: number; timestamp: number, session_length: number }>>;
-      compileData: () => Promise<{ success: boolean; data: { title: string; session_length: number }[] }>;
+      compileData: (days?: number) => Promise<{ success: boolean; data: { title: string; session_length: number }[] }>;
       login: () => Promise<void>;
       onAuthSuccess: (callback: (userData: any) => void) => void;
       onAuthFailure: (callback: () => void) => void;
       onAuthLogout: (callback: () => void) => void;
-      removeAuthListener: () => void;
-      storeUserToken: (userData: any) => Promise<{ success: boolean; error?: string }>;
+      removeAuthListener: () => void;      storeUserToken: (userData: any) => Promise<{ success: boolean; error?: string }>;
       getUserToken: () => Promise<{ userData: any | null; isLoggedIn: boolean }>;
+      getUserData: () => Promise<{ userData: any | null; success: boolean; error?: string }>;
       clearUserToken: () => Promise<{ success: boolean; error?: string }>;
       getLoginStatus: () => Promise<{ isLoggedIn: boolean }>;
       // Window control APIs
@@ -44,11 +46,15 @@ const App = () => {
           <main style={{ 
             flex: 1, 
             overflow: 'auto',
-            backgroundColor: '#0e0e0e'
-          }}>
-            <Routes>
+            background : "rgba(13, 13, 13, 1)",
+            borderTop: '1px solid rgb(46, 46, 46)',
+            borderLeft: '1px solid rgb(46, 46, 46)',
+            borderTopLeftRadius: '8px',
+          }}>            <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/screentime" element={<ScreentimePage />} />
+              <Route path="/categories" element={<CategoriesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/about" element={<AboutPage />} />
             </Routes>

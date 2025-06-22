@@ -4,12 +4,11 @@ import moment from 'moment';
 const HomePage = () => {
   const [activeWindow, setActiveWindow] = useState<{ id: number; title: string; error?: string} | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<Array<{ id: number; title: string; unique_id: number; timestamp: number, session_length: number }>>([]);
-  const [compileData, setCompileData] = useState<{ success: boolean, data: {
+  const [history, setHistory] = useState<Array<{ id: number; title: string; unique_id: number; timestamp: number, session_length: number }>>([]);  const [compileData, setCompileData] = useState<{ success: boolean, data: {
     title: string; session_length: number
     }[] } | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<'6hours' | '3days' | '7days'>('6hours');
   const [user, setUser] = useState<any>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const refreshHistory = async () => {
     try {
@@ -20,24 +19,29 @@ const HomePage = () => {
     }
   };
 
-  const handleLogin = async () => {
+  const fetchCompileData = async (filter: '6hours' | '3days' | '7days') => {
     try {
-      setIsLoggingIn(true);
-      await window.electronAPI.login();
+      let days: number;
+      switch (filter) {
+        case '6hours':
+          days = 0.25; // 6 hours = 0.25 days
+          break;
+        case '3days':
+          days = 3;
+          break;
+        case '7days':
+          days = 7;
+          break;
+      }
+      
+      const result = await window.electronAPI.compileData(days);
+      if (result.success) {
+        setCompileData(result);
+      } else {
+        console.error('Failed to compile data');
+      }
     } catch (err) {
-      console.error('Error initiating login:', err);
-      setError('Failed to initiate login');
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await window.electronAPI.clearUserToken();
-      setUser(null);
-      console.log('User logged out successfully');
-    } catch (err) {
-      console.error('Error during logout:', err);
+      console.error('Error compiling data:', err);
     }
   };
 
@@ -52,25 +56,8 @@ const HomePage = () => {
       console.error('Error loading stored user:', err);
     }
   };
-
   useEffect(() => {
     loadStoredUser();
-    window.electronAPI.onAuthSuccess(async (userData) => {
-      console.log('Authentication successful:', userData);
-      setUser(userData);
-      setIsLoggingIn(false);
-      
-      try {
-        await window.electronAPI.storeUserToken(userData);
-        console.log('User data stored successfully');
-      } catch (err) {
-        console.error('Error storing user data:', err);
-      }
-    });
-
-    return () => {
-      window.electronAPI.removeAuthListener();
-    };
   }, []);
 
   useEffect(() => {
@@ -105,48 +92,24 @@ const HomePage = () => {
     refreshHistory();
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      fetchCompileData(selectedFilter);
+    }
+  }, [selectedFilter, user]);
+
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h1>Active Window Tracker</h1>
       
-      <div style={{ 
-        marginBottom: '30px', 
-        padding: '15px', 
-        borderRadius: '8px',
-        backgroundColor: '#000000'
-      }}>
-        <h2>Authentication</h2>
-        {user ? (
-          <>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                {user.picture && (
-                  <img 
-                    src={user.picture} 
-                    alt="Profile" 
-                    style={{ width: '40px', height: '40px', borderRadius: '50%' }}
-                  />
-                )}
-                <div>
-                  <p style={{ margin: 0, fontWeight: 'bold' }}>{user.name}</p>
-                  <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>{user.email}</p>
-                </div>
-              </div>
-              <button 
-                onClick={handleLogout}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Logout
-              </button>
-            </div>
-            {activeWindow ? (
+      {user ? (
+        <div style={{ 
+          marginBottom: '30px', 
+          padding: '15px', 
+          borderRadius: '8px',
+          backgroundColor: '#000000'
+        }}>
+          {activeWindow ? (
             <div>
                 <h2>Currently Tracking</h2>
                 <p>Title: {activeWindow.title}</p>
@@ -157,26 +120,45 @@ const HomePage = () => {
             </div>
             ) : (
               <p>No active window detected (tracking will start automatically)</p>
-            )}
-            <div>
+            )}            <div>
               <h2>Compile Data</h2>
-              <button
-                onClick={async () => {
-                  try {
-                    const result = await window.electronAPI.compileData();
-                    if (result.success) {
-                      setCompileData(result);
-                    } else {
-                      alert('Failed to compile data');
-                    }
-                  } catch (err) {
-                    console.error('Error compiling data:', err);
-                    alert('Error compiling data');
-                  }
-              }}>Compile</button>
+              
+              <div style={{ 
+                display: 'flex', 
+                marginBottom: '20px',
+                borderBottom: '2px solid #333'
+              }}>
+                {[
+                  { key: '6hours', label: 'Last 6 Hours' },
+                  { key: '3days', label: 'Last 3 Days' },
+                  { key: '7days', label: 'Last 7 Days' }
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setSelectedFilter(tab.key as '6hours' | '3days' | '7days')}
+                    style={{
+                      padding: '10px 20px',
+                      marginRight: '5px',
+                      backgroundColor: selectedFilter === tab.key ? '#4CAF50' : '#333',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px 4px 0 0',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: selectedFilter === tab.key ? 'bold' : 'normal',
+                      transition: 'background-color 0.3s'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
               {compileData && (
                   <div>
-                      <h3>Compiled Data</h3>
+                      <h3>
+                        Compiled Data ({selectedFilter === '6hours' ? 'Last 6 Hours' : selectedFilter === '3days' ? 'Last 3 Days' : 'Last 7 Days'})
+                      </h3>
                       <ul style={{
                           listStyleType: 'none',
                           padding: 0,
@@ -199,6 +181,7 @@ const HomePage = () => {
                       </ul>
                   </div>
               )}
+              { /*
               <h2>History ({history.length} records)</h2>
               <button onClick={refreshHistory} style={{ marginBottom: '10px' }}>
                 Refresh History
@@ -214,28 +197,21 @@ const HomePage = () => {
                   </li>
                 ))}
               </ul>
+              */
+              }
             </div>
-          </>
-        ) : (
-          <div>
-            <p>Not logged in</p>
-            <button 
-              onClick={handleLogin}
-              disabled={isLoggingIn}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: isLoggingIn ? '#ccc' : '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: isLoggingIn ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {isLoggingIn ? 'Opening browser...' : 'Login with Google'}
-            </button>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div style={{ 
+          marginBottom: '30px', 
+          padding: '15px', 
+          borderRadius: '8px',
+          backgroundColor: '#000000'
+        }}>
+          <h2>Please Login</h2>
+          <p>Please go to Settings to login with your Google account to start tracking.</p>
+        </div>
+      )}
       
       {error && (
         <div style={{ color: 'red', marginBottom: '10px' }}>

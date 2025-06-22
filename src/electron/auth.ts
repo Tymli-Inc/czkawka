@@ -146,7 +146,13 @@ export async function storeUserToken(userData: any) {
     } catch (error) {
       mainWindow.webContents.send('auth-fail');
     }
-    store.set('userData', userData);
+    store.set('userData', {
+      ...fetchedUserData.data,
+      token: userData.token,
+      email: fetchedUserData?.data?.email || userData.email, // Fallback to userData.email if not present
+      name: fetchedUserData?.data?.name || userData.name, // Fallback to userData.name if not present
+      picture: fetchedUserData?.data?.picture || userData.picture // Fallback to userData.picture if not present
+    });
     store.set('isLoggedIn', true);
     log.info('User data stored successfully');
     console.log('Store contents after saving:', store.store);
@@ -207,6 +213,20 @@ export function getLoginStatus() {
   } catch (error: any) {
     log.error('Failed to get login status:', error);
     return { isLoggedIn: false };
+  }
+}
+
+export function getUserData(): { userData: any; success: boolean; error?: string } {
+  try {
+    if (!store) {
+      throw new Error('Store not initialized');
+    }
+    const userData = store.get('userData') as any;
+    console.log('Retrieved user data from store:', userData);
+    return { userData, success: true };
+  } catch (error: any) {
+    log.error('Failed to get user data:', error);
+    return { userData: null as any, success: false, error: error.message };
   }
 }
 

@@ -19,7 +19,7 @@ interface ElectronAPI {
   getActiveWindow: () => Promise<any>;
   saveActiveWindow: (windowData: ActiveWindowData) => Promise<any>;
   getActiveWindows: () => Promise<any>;
-  compileData: () => Promise<any>;
+  compileData: (days?: number) => Promise<any>;
   login: () => Promise<void>;
   onAuthSuccess: (callback: (userData: UserData) => void) => void;
   onAuthFailure: (callback: () => void) => void;
@@ -27,6 +27,7 @@ interface ElectronAPI {
   removeAuthListener: () => void;  // Token management APIs
   storeUserToken: (userData: UserData) => Promise<{ success: boolean; error?: string }>;
   getUserToken: () => Promise<{ userData: UserData | null; isLoggedIn: boolean }>;
+  getUserData: () => Promise<{ userData: UserData | null; success: boolean; error?: string }>;
   clearUserToken: () => Promise<{ success: boolean; error?: string }>;
   getLoginStatus: () => Promise<{ isLoggedIn: boolean }>;
   // Window control APIs
@@ -46,9 +47,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getActiveWindows: async () => {
     return await ipcRenderer.invoke('get-active-windows');
   },
-
-  compileData: async () => {
-    return await ipcRenderer.invoke('compile-data');
+  compileData: async (days?: number) => {
+    return await ipcRenderer.invoke('compile-data', days);
   },
 
   login: async (): Promise<void> => {
@@ -77,6 +77,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getUserToken: async (): Promise<{ userData: UserData | null; isLoggedIn: boolean }> => {
     return await ipcRenderer.invoke('get-user-token');
+  },
+
+  getUserData: async (): Promise<{ userData: UserData | null; success: boolean; error?: string }> => {
+    return await ipcRenderer.invoke('get-user-data');
   },
 
   clearUserToken: async (): Promise<{ success: boolean; error?: string }> => {
