@@ -109,7 +109,7 @@ const TopBar = () => {
             onMouseLeave={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <rect x="1" y="5" width="10" height="2" fill="currentColor"/>
+              <rect x="1" y="6" width="10" height="1" fill="currentColor"/>
             </svg>
           </button>
 
@@ -119,16 +119,26 @@ const TopBar = () => {
             style={{...buttonBaseStyle, fontSize: '14px'}}
             onMouseEnter={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#333'}
             onMouseLeave={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'}
-          >
-            {isMaximized ? (
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <rect x="2" y="2" width="8" height="8" stroke="currentColor" strokeWidth="1" fill="none"/>
-                <rect x="1" y="1" width="8" height="8" stroke="currentColor" strokeWidth="1" fill="none"/>
-              </svg>
+          >            {isMaximized ? (
+              <>
+                <svg width="12" height="12" viewBox="0 0 10 10" fill="none" style={{ borderRadius: '2px' }}>
+                <svg width="8" height="8" viewBox="0 0 6 8" fill="none" style={{ borderRadius: '2px' }}>
+                  <rect x="0" y="2" width="6" height="6" stroke="currentColor" strokeWidth="0.4" fill="none" />
+                  <rect x="0" y="2" width="6" height="6" stroke="currentColor" strokeWidth="0.4" fill="none"/>
+                </svg>
+                  <rect x="2" y="-1" width="8" height="1" stroke="currentColor" strokeWidth="0.4" fill="none"/>
+                  <rect x="2" y="-1" width="8" height="1" stroke="currentColor" strokeWidth="0.4" fill="none"/>
+                  <rect x="10" y="0" width="1" height="6" stroke="currentColor" strokeWidth="0.4" fill="none"/>
+                  <rect x="10" y="0" width="1" height="6" stroke="currentColor" strokeWidth="0.4" fill="none"/>
+                </svg>
+              </>
             ) : (
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <rect x="1" y="1" width="10" height="10" stroke="currentColor" strokeWidth="1" fill="none"/>
-              </svg>
+              <>
+                <svg width="11" height="11" viewBox="0 0 9 9" fill="none" style={{ borderRadius: '2px' }}>
+                  <rect x="0" y="0" width="9" height="9" stroke="currentColor" strokeWidth="0.5" fill="none"/>
+                  <rect x="0" y="0" width="9" height="9" stroke="currentColor" strokeWidth="0.5" fill="none"/>
+                </svg>
+              </>
             )}
           </button>
 
@@ -140,7 +150,8 @@ const TopBar = () => {
             onMouseLeave={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth=".5" strokeLinecap="round"/>
+              <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth=".5" strokeLinecap="round"/>
             </svg>
           </button>
         </div>
