@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { MdSettings } from 'react-icons/md';
 
 const SettingsPage = () => {
   const [user, setUser] = useState<any>(null);
@@ -92,15 +93,29 @@ const SettingsPage = () => {
   }
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Settings</h1>
+      <h2 style={{
+        fontSize: '24px',
+        height: '55px',
+        lineHeight: '40px',
+        paddingBottom: '20px',
+        marginTop: '0',
+        borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+      }}>
+        <MdSettings style={{ verticalAlign: 'middle', marginRight: '8px', color: 'rgba(206, 206, 206, 0.77)' }} />
+        Settings
+      </h2>
       
       <div style={{
-        backgroundColor: '#1a1a1a',
-        padding: '15px',
+        backgroundColor: '#070707',
+        padding: '20px',
         borderRadius: '8px',
-        marginBottom: '20px'
+        marginBottom: '20px',
+        border: "1px solid rgba(255, 255, 255, 0.1)",
       }}>
-        <h3>Authentication</h3>
+        <h2>Authentication</h2>
         {user ? (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
@@ -152,12 +167,12 @@ const SettingsPage = () => {
           </div>
         )}
       </div>
-      <p>Configure your window tracking preferences.</p>
       <div style={{
-        backgroundColor: '#1a1a1a',
+        backgroundColor: '#070707',
         padding: '20px',
         borderRadius: '8px',
-        marginTop: '20px'
+        marginBottom: '20px',
+        border: "1px solid rgba(255, 255, 255, 0.1)",
       }}>
         <h3>Configuration Options</h3>
         <div style={{ marginBottom: '15px' }}>

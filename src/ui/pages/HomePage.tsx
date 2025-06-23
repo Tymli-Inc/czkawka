@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import moment from 'moment';
+import Timeline from '../components/timeline/timeline';
 
 const HomePage = () => {
   const [activeWindow, setActiveWindow] = useState<{ id: number; title: string; error?: string} | null>(null);
@@ -99,107 +100,147 @@ const HomePage = () => {
   }, [selectedFilter, user]);
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Active Window Tracker</h1>
-      
+    <div>
+      <Timeline />      
       {user ? (
         <div style={{ 
-          marginBottom: '30px', 
-          padding: '15px', 
-          borderRadius: '8px',
-          backgroundColor: '#000000'
+          marginTop: '-24px',
+          padding: '20px', 
         }}>
-          {activeWindow ? (
-            <div>
-                <h2>Currently Tracking</h2>
-                <p>Title: {activeWindow.title}</p>
-                <p>ID: {activeWindow.id}</p>
-                <p style={{ color: '#4CAF50', fontSize: '14px' }}>
-                  ✓ Automatic tracking is active (updates every second)
-                </p>
+          {activeWindow ? (            
+            <div style={{
+              padding: '20px', 
+              borderRadius: '16px',
+              background: 'rgba(0, 0, 0, 0)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#FFFFFF',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '2px',
+                background: 'rgba(255, 255, 255, 0.5)',
+                animation: 'shimmer 2s cubic-bezier(0.87, 0, 0.13, 1) infinite'
+              }} />
+              
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+                <div style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 156, 245, 1)',
+                  boxShadow: '0 0 10px rgba(255, 156, 245, 0.5)',
+                  marginRight: '12px',
+                  animation: 'pulse 2s ease-in-out infinite'
+                }} />
+                <h2 style={{ 
+                  margin: 0, 
+                  fontSize: '20px', 
+                  fontWeight: '600',
+                  background: 'linear-gradient(90deg, rgba(255, 156, 245, 1) 0%, rgba(165, 84, 232, 1) 31.61%, rgba(135, 125, 255, 1) 66.25%, rgba(125, 212, 255, 1) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  Currently Tracking
+                </h2>
+              </div>
+
+              <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'row', gap: '8px' }}>
+                <div style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}>
+                  <div style={{ 
+                    fontSize: '12px', 
+                    color: '#9E9E9E', 
+                    marginBottom: '4px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Application Title
+                  </div>
+                  <div style={{ 
+                    fontSize: '16px', 
+                    fontWeight: '500',
+                    wordBreak: 'break-word'
+                  }}>
+                    {activeWindow.title}
+                  </div>
+                </div>
+
+                <div style={{
+                  width: '100%',
+
+                  padding: '12px 16px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}>
+                  <div style={{ 
+                    fontSize: '12px', 
+                    color: '#9E9E9E', 
+                    marginBottom: '4px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Window ID
+                  </div>
+                  <div style={{ 
+                    fontSize: '14px', 
+                    fontFamily: 'monospace',
+                    color: '#FFB74D'
+                  }}>
+                    {activeWindow.id}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '12px 16px',
+                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                borderRadius: '8px',
+                border: '1px solid rgba(76, 175, 80, 0.3)'
+              }}>
+                <div style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: '#4CAF50',
+                  marginRight: '8px',
+                  animation: 'pulse 1s ease-in-out infinite'
+                }} />
+                <span style={{ 
+                  color: '#4CAF50', 
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}>
+                  Automatic tracking is active (updates every second)
+                </span>
+              </div>
+
+              <style>{`
+                @keyframes pulse {
+                  0%, 100% { opacity: 1; transform: scale(1); }
+                  50% { opacity: 0.7; transform: scale(1.1); }
+                }
+                @keyframes shimmer {
+                  0% { transform: translateX(-100%); }
+                  100% { transform: translateX(100%); }
+                }
+              `}</style>
             </div>
             ) : (
               <p>No active window detected (tracking will start automatically)</p>
-            )}            <div>
-              <h2>Compile Data</h2>
-              
-              <div style={{ 
-                display: 'flex', 
-                marginBottom: '20px',
-                borderBottom: '2px solid #333'
-              }}>
-                {[
-                  { key: '6hours', label: 'Last 6 Hours' },
-                  { key: '3days', label: 'Last 3 Days' },
-                  { key: '7days', label: 'Last 7 Days' }
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setSelectedFilter(tab.key as '6hours' | '3days' | '7days')}
-                    style={{
-                      padding: '10px 20px',
-                      marginRight: '5px',
-                      backgroundColor: selectedFilter === tab.key ? '#4CAF50' : '#333',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '4px 4px 0 0',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: selectedFilter === tab.key ? 'bold' : 'normal',
-                      transition: 'background-color 0.3s'
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              {compileData && (
-                  <div>
-                      <h3>
-                        Compiled Data ({selectedFilter === '6hours' ? 'Last 6 Hours' : selectedFilter === '3days' ? 'Last 3 Days' : 'Last 7 Days'})
-                      </h3>
-                      <ul style={{
-                          listStyleType: 'none',
-                          padding: 0,
-                          margin: 0,
-                          backgroundColor: '#202020',
-                          color: '#fff'
-                      }}>
-                      {compileData.data.map((item, index) => (
-                          <li style={{
-                              marginBottom: '10px',
-                              padding: '5px',
-                              backgroundColor: index % 2 === 0 ? '#131313' : '#1f1f1f'
-                          }} key={index}>
-                            <div>
-                              <strong>Title:</strong> {item.title} <br />
-                              <strong>Session Length:</strong> {moment.duration(item.session_length).minutes() + 'm ' + moment.duration(item.session_length).seconds() + 's'}  <br />
-                            </div>
-                          </li>
-                      ))}
-                      </ul>
-                  </div>
-              )}
-              { /*
-              <h2>History ({history.length} records)</h2>
-              <button onClick={refreshHistory} style={{ marginBottom: '10px' }}>
-                Refresh History
-              </button>
-              <ul>
-                {history.map((entry) => (
-                  <li key={entry.id} style={{ marginBottom: '10px', padding: '5px', border: '1px solid #ccc' }}>
-                    <strong>{new Date(entry.timestamp).toLocaleString()}</strong><br/> 
-                    Title: {entry.title} <br/>
-                    ID: {entry.id ?? 'N/A'} <br/>
-                    Timestamp: {new Date(entry.timestamp).toLocaleString()} <br/>
-                    Session Duration: {entry.session_length}ms <br/>
-                  </li>
-                ))}
-              </ul>
-              */
-              }
-            </div>
+            )}
         </div>
       ) : (
         <div style={{ 

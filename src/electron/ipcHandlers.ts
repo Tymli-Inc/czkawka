@@ -1,7 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import {  } from './database';
-import { getCurrentActiveWindow, getActiveWindows, compileWindowData } from './windowTracking';
+import { getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes } from './windowTracking';
 import {clearUserToken, getLoginStatus, getUserToken, handleLogin, storeUserToken, getUserData} from './auth';
+import log from 'electron-log';
 
 export function setupIpcHandlers() {
   ipcMain.handle('get-active-windows', () => {
@@ -15,11 +15,26 @@ export function setupIpcHandlers() {
     try {
       return compileWindowData(days);
     } catch (error) {
-      console.error('Error compiling data:', error);
+      log.error('Error compiling data:', error);
       return {
         error: typeof error === 'object' && error !== null && 'message' in error
           ? (error as { message: string }).message
           : String(error),
+      };
+    }
+  });
+
+  ipcMain.handle('get-tracking-times', async (event, days?: number) => {
+    try {
+      return getTrackingTimes(days);
+    } catch (error) {
+      log.error('Error getting tracking times:', error);
+      return {
+        success: false,
+        error: typeof error === 'object' && error !== null && 'message' in error
+          ? (error as { message: string }).message
+          : String(error),
+        data: []
       };
     }
   });

@@ -32,6 +32,7 @@ declare global {
       windowIsMaximized: () => Promise<boolean>;
       onWindowMaximized: (callback: (isMaximized: boolean) => void) => void;
       removeWindowListener: () => void;
+      getTrackingTimes: (days?: number) => Promise<{ success: boolean; data: any[]; error?: string }>;
     };
   }
 }

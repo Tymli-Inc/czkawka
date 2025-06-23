@@ -11,6 +11,8 @@ body {
 * {
   outline: none !important;
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #333333 #161616;
 }
 
 *:focus {
@@ -88,4 +90,28 @@ a:focus {
 .feature-card p {
   opacity: 0.9;
   line-height: 1.6;
+}
+
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #161616;
+  border-radius: 6px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 6px;
+  border: 2px solid #161616;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #444444;
+}
+
+*::-webkit-scrollbar-corner {
+  background: #161616;
 }

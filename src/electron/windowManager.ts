@@ -12,7 +12,7 @@ interface AppExtended {
 
 export function createMainWindow(app: AppExtended): { window: BrowserWindow, tray: Tray } {
   const mainWindow = new BrowserWindow({
-    width: 1200,
+    width: 1300,
     height: 800,
     frame: false, // Remove the default window frame
     titleBarStyle: 'hidden', // Hide the title bar
@@ -21,6 +21,8 @@ export function createMainWindow(app: AppExtended): { window: BrowserWindow, tra
       contextIsolation: true,
       nodeIntegration: false,
     },
+    minHeight: 600,
+    minWidth: 1100,
   });
 
   // Remove the default menu bar

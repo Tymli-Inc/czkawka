@@ -46,7 +46,7 @@ function loadGetWindows(): boolean {
 async function trackActiveWindow() {
   try {
     if (!getActiveWindow) {
-      console.error('get-windows is not available');
+      log.error('get-windows is not available');
       return;
     }
 
@@ -96,10 +96,10 @@ async function trackActiveWindow() {
       }
 
     } else {
-      console.log('No active window found');
+      log.info('No active window found');
     }
   } catch (error) {
-    console.error('Error tracking active window:', error);
+    log.error('Error tracking active window:', error);
   }
 }
 
@@ -110,7 +110,7 @@ async function saveWindowToDatabase(windowData: any) {
     );
     stmt.run(windowData.title, windowData.id, windowData.startTime, 0);
   } catch (error) {
-    console.error('Error saving window to database:', error);
+    log.error('Error saving window to database:', error);
   }
 }
 
@@ -121,23 +121,30 @@ async function updateWindowSessionDuration(timestamp: number, sessionDuration: n
     );
     const result = updateStmt.run(sessionDuration, timestamp);
   } catch (error) {
-    console.error('Error updating session duration:', error);
+    log.error('Error updating session duration:', error);
   }
 }
 
 export function startActiveWindowTracking() {
-  console.log('Starting active window tracking...');
-
+  log.info('Starting active window tracking...');
   trackActiveWindow();
-
   trackingInterval = setInterval(trackActiveWindow, 1000);
+  db.prepare(`
+    INSERT INTO tracking_times (session_start, session_end)
+    VALUES (?, ?)
+  `).run(Date.now(), 0);
 }
 
 export function stopActiveWindowTracking() {
   if (trackingInterval) {
     clearInterval(trackingInterval);
     trackingInterval = null;
-    console.log('Active window tracking stopped');
+    log.info('Active window tracking stopped');
+    db.prepare(`
+      UPDATE tracking_times
+      SET session_end = ?
+      WHERE session_end = 0
+    `).run(Date.now());
   }
 }
 
@@ -145,17 +152,17 @@ export function initializeWindowTracking(): void {
   try {
     loadGetWindows();
   } catch (error) {
-    console.error('Critical error loading get-windows module:', error);
+    log.error('Critical error loading get-windows module:', error);
   }
 
   try {
     const loginStatus = getLoginStatus();
     if (loginStatus.isLoggedIn) {
-      console.log('User is logged in, starting active window tracking...');
+      log.info('User is logged in, starting active window tracking...');
       startActiveWindowTracking();
     }
   } catch (error) {
-    console.error('Error checking login status during window tracking initialization:', error);
+    log.error('Error checking login status during window tracking initialization:', error);
   }
 
   app.on('window-all-closed', () => {
@@ -199,10 +206,10 @@ export async function getCurrentActiveWindow() {
       };
     }
 
-    console.log('No active window being tracked');
+    log.info('No active window being tracked');
     return null;
   } catch (error) {
-    console.error('Error getting active window:', error);
+    log.error('Error getting active window:', error);
     return {
       error: typeof error === 'object' && error !== null && 'message' in error
           ? (error as { message: string }).message
@@ -212,7 +219,7 @@ export async function getCurrentActiveWindow() {
 }
 
 export function getActiveWindows() {
-  return db.prepare('SELECT * FROM active_windows ORDER BY timestamp DESC LIMIT 100').all();
+  return db.prepare('SELECT * FROM active_windows ORDER BY timestamp DESC').all();
 }
 
 export function compileWindowData(days?: number) {
@@ -229,7 +236,7 @@ export function compileWindowData(days?: number) {
   
   const dataPool = db.prepare(query).all(...params);
 
-  console.log('Data pool:', dataPool.length);
+  log.info('Data pool:', dataPool.length);
   return {
     success: true,
     data: dataPool.map((item: any) => ({
@@ -237,4 +244,36 @@ export function compileWindowData(days?: number) {
       session_length: item['SUM(session_length)'] || 0
     }))
   };
+}
+
+export function getTrackingTimes(days?: number) {
+  try {
+    let query = 'SELECT * FROM tracking_times';
+    let params: any[] = [];
+    
+    if (days && days > 0) {
+      const daysAgoTimestamp = Date.now() - (days * 24 * 60 * 60 * 1000);
+      query += ' WHERE session_start >= ?';
+      params.push(daysAgoTimestamp);
+    }
+    
+    query += ' ORDER BY session_start DESC';
+    
+    const trackingData = db.prepare(query).all(...params);
+    
+    log.info('Retrieved tracking times:', trackingData.length, 'records');
+    return {
+      success: true,
+      data: trackingData
+    };
+  } catch (error) {
+    log.error('Error retrieving tracking times:', error);
+    return {
+      success: false,
+      error: typeof error === 'object' && error !== null && 'message' in error
+        ? (error as { message: string }).message
+        : String(error),
+      data: [] as any[]
+    };
+  }
 }

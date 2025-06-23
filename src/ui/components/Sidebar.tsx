@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdArrowRight, MdHome } from "react-icons/md";
+import { MdArrowRight, MdHome, MdTimeline } from "react-icons/md";
 import {IoAnalytics, IoPlay} from "react-icons/io5";
 import {AiFillPieChart} from "react-icons/ai";
 import {PiClockFill} from "react-icons/pi";
@@ -87,7 +87,7 @@ const Sidebar: React.FC = () => {
       }
     }
   };
-    const menuItems: {
+  const menuItems: {
     path: string;
     label: string;
     icon: React.ReactNode;
@@ -104,7 +104,7 @@ const Sidebar: React.FC = () => {
     { path: '/categories', label: 'Categories',
         //@ts-ignore
         icon: <AiFillPieChart /> }
-  ];  return (
+  ];return (
     <motion.div 
       className={styles.sidebar}
       variants={sidebarVariants}

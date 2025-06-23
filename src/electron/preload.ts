@@ -16,28 +16,27 @@ interface UserData {
 }
 
 interface ElectronAPI {
-  getActiveWindow: () => Promise<any>;
-  saveActiveWindow: (windowData: ActiveWindowData) => Promise<any>;
-  getActiveWindows: () => Promise<any>;
-  compileData: (days?: number) => Promise<any>;
+  getActiveWindow: () => Promise<{ title: string ; id: number ; error?: string} | null>;
+  saveActiveWindow: (data: { title: string; unique_id: number; error?: string }) => Promise<{ success: boolean }>;
+  getActiveWindows: () => Promise<Array<{ id: number; title: string; unique_id: number; timestamp: number, session_length: number }>>;
+  compileData: (days?: number) => Promise<{ success: boolean; data: { title: string; session_length: number }[] }>;
   login: () => Promise<void>;
-  onAuthSuccess: (callback: (userData: UserData) => void) => void;
+  onAuthSuccess: (callback: (userData: any) => void) => void;
   onAuthFailure: (callback: () => void) => void;
   onAuthLogout: (callback: () => void) => void;
-  removeAuthListener: () => void;  // Token management APIs
-  storeUserToken: (userData: UserData) => Promise<{ success: boolean; error?: string }>;
-  getUserToken: () => Promise<{ userData: UserData | null; isLoggedIn: boolean }>;
-  getUserData: () => Promise<{ userData: UserData | null; success: boolean; error?: string }>;
+  removeAuthListener: () => void;      storeUserToken: (userData: any) => Promise<{ success: boolean; error?: string }>;
+  getUserToken: () => Promise<{ userData: any | null; isLoggedIn: boolean }>;
+  getUserData: () => Promise<{ userData: any | null; success: boolean; error?: string }>;
   clearUserToken: () => Promise<{ success: boolean; error?: string }>;
   getLoginStatus: () => Promise<{ isLoggedIn: boolean }>;
-  // Window control APIs
   windowMinimize: () => Promise<void>;
   windowMaximize: () => Promise<void>;
   windowClose: () => Promise<void>;
   windowIsMaximized: () => Promise<boolean>;
   onWindowMaximized: (callback: (isMaximized: boolean) => void) => void;
   removeWindowListener: () => void;
-}
+  getTrackingTimes: (days?: number) => Promise<{ success: boolean; data: any[]; error?: string }>;
+};
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getActiveWindow: async (): Promise<any> => {
@@ -46,6 +45,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getActiveWindows: async () => {
     return await ipcRenderer.invoke('get-active-windows');
+  },
+  getTrackingTimes: async (days?: number) => {
+    return await ipcRenderer.invoke('get-tracking-times', days);
   },
   compileData: async (days?: number) => {
     return await ipcRenderer.invoke('compile-data', days);

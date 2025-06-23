@@ -5,6 +5,8 @@ import { setupProtocolHandling, setupDeepLinkHandlers } from './auth';
 import { ensureSingleInstance, getTrayIconPath } from './utils';
 import { createMainWindow } from './windowManager';
 import { setupIpcHandlers } from './ipcHandlers';
+import log from 'electron-log';
+
 import './auth';
 
 interface AppExtended extends Electron.App {
@@ -29,7 +31,7 @@ app.whenReady().then(() => {
     try {
         const dbInitialized = initializeDatabase();
         if (!dbInitialized) {
-            console.error('Failed to initialize database');
+            log.error('Failed to initialize database');
         }
 
         const { window, tray: appTray } = createMainWindow(app);
@@ -39,7 +41,7 @@ app.whenReady().then(() => {
         setupIpcHandlers();
         setupDeepLinkHandlers(mainWindow);
     } catch (error) {
-        console.error('Error during app initialization:', error);
+        log.error('Error during app initialization:', error);
     }
 
     app.on('activate', () => {
