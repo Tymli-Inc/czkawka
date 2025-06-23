@@ -142,7 +142,7 @@ export async function storeUserToken(userData: any) {
       });
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
       fetchedUserData = await res.json();
-      console.log('Fetched user data from API:', fetchedUserData);
+      log.info('Fetched user data from API:', fetchedUserData);
     } catch (error) {
       mainWindow.webContents.send('auth-fail');
     }
@@ -155,7 +155,7 @@ export async function storeUserToken(userData: any) {
     });
     store.set('isLoggedIn', true);
     log.info('User data stored successfully');
-    console.log('Store contents after saving:', store.store);
+    log.info('Store contents after saving:', store.store);
     startActiveWindowTracking()
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL!==undefined && MAIN_WINDOW_VITE_DEV_SERVER_URL) {
       mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
