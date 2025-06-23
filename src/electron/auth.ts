@@ -5,7 +5,33 @@ import {mainWindow} from "./main";
 import Store from 'electron-store';
 import log from "electron-log";
 import {startActiveWindowTracking, stopActiveWindowTracking} from "./windowTracking";
+
+declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
+declare const MAIN_WINDOW_VITE_NAME: string;
+
 export let store: any;
+
+function initializeStore() {
+  if (!store) {
+    try {
+      store = new Store({
+        name: 'user-tokens',
+        defaults: {
+          userData: null,
+          isLoggedIn: false
+        }
+      });
+      log.info('Electron Store initialized at:', store.path);
+      log.info('Initial store contents:', store.store);
+    } catch (error) {
+      log.error('Failed to initialize electron-store:', error);
+      throw error;
+    }
+  }
+  return store;
+}
+
+initializeStore();
 
 const protocol = 'hourglass';
 let deeplinkUrl: string | null = null;
@@ -19,20 +45,7 @@ export function setupProtocolHandling() {
 }
 
 export async function setupDeepLinkHandlers(mainWindow: BrowserWindow | null) {
-  try {
-    store = new Store({
-      name: 'user-tokens',
-      defaults: {
-        userData: null,
-        isLoggedIn: false
-      }
-    });
-    console.log('Electron Store path:', store.path);
-    console.log('Initial store contents:', store.store);
-  } catch (error) {
-    console.error('Failed to initialize electron-store:', error);
-  }
-
+  initializeStore();
 
   const isLoggedIn = store?.get('isLoggedIn');
   const userValid = await validateLogin()
@@ -128,12 +141,19 @@ export function getDeeplinkUrl() {
 
 export async function storeUserToken(userData: any) {
   try {
+    // Ensure store is initialized
+    initializeStore();
+    
     if (!store) {
       throw new Error('Store not initialized');
     }
-    let fetchedUserData : any = null;
+      let fetchedUserData : any = null;
     try {
-      const res = await fetch('http://localhost:3000/api/v1/user/me', {
+      const apiUrl = app.isPackaged 
+        ? 'https://hourglass-auth.onrender.com/api/v1/user/me'
+        : 'http://localhost:3000/api/v1/user/me';
+        
+      const res = await fetch(apiUrl, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${userData.token}`,
@@ -142,17 +162,24 @@ export async function storeUserToken(userData: any) {
       });
       if (!res.ok) throw new Error(`Failed: ${res.status}`);
       fetchedUserData = await res.json();
-      console.log('Fetched user data from API:', fetchedUserData);
+      log.info('Fetched user data from API:', fetchedUserData);
     } catch (error) {
-      mainWindow.webContents.send('auth-fail');
+      log.error('Failed to fetch user data from API:', error);
+      // Don't send auth-fail here, continue with userData from token
+      fetchedUserData = null;
     }
-    store.set('userData', {
-      ...fetchedUserData.data,
+    
+    // Store user data with proper fallbacks
+    const userDataToStore = {
       token: userData.token,
-      email: fetchedUserData?.data?.email || userData.email, // Fallback to userData.email if not present
-      name: fetchedUserData?.data?.name || userData.name, // Fallback to userData.name if not present
-      picture: fetchedUserData?.data?.picture || userData.picture // Fallback to userData.picture if not present
-    });
+      email: fetchedUserData?.data?.email || userData.email,
+      name: fetchedUserData?.data?.name || userData.name,
+      picture: fetchedUserData?.data?.picture || userData.picture,
+      // Include any additional data from API if available
+      ...(fetchedUserData?.data || {})
+    };
+    
+    store.set('userData', userDataToStore);
     store.set('isLoggedIn', true);
     log.info('User data stored successfully');
     console.log('Store contents after saving:', store.store);
@@ -172,6 +199,9 @@ export async function storeUserToken(userData: any) {
 
 export function getUserToken() {
   try {
+    // Ensure store is initialized
+    initializeStore();
+    
     if (!store) {
       throw new Error('Store not initialized');
     }
@@ -187,6 +217,9 @@ export function getUserToken() {
 
 export function clearUserToken() {
   try {
+    // Ensure store is initialized
+    initializeStore();
+    
     if (!store) {
       throw new Error('Store not initialized');
     }
@@ -205,6 +238,9 @@ export function clearUserToken() {
 
 export function getLoginStatus() {
   try {
+    // Ensure store is initialized
+    initializeStore();
+    
     if (!store) {
       throw new Error('Store not initialized');
     }
@@ -218,6 +254,9 @@ export function getLoginStatus() {
 
 export function getUserData(): { userData: any; success: boolean; error?: string } {
   try {
+    // Ensure store is initialized
+    initializeStore();
+    
     if (!store) {
       throw new Error('Store not initialized');
     }
@@ -237,7 +276,12 @@ export async function validateLogin() {
         console.log('User is not logged in or user data is missing');
         return false;
         }
-        const res = await fetch('http://localhost:3000/api/v1/user/me', {
+        
+        const apiUrl = app.isPackaged 
+          ? 'https://hourglass-auth.onrender.com/api/v1/user/me'
+          : 'http://localhost:3000/api/v1/user/me';
+          
+        const res = await fetch(apiUrl, {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${userData.token}`,

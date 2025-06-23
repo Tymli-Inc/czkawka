@@ -5,6 +5,7 @@ import { setupProtocolHandling, setupDeepLinkHandlers } from './auth';
 import { ensureSingleInstance, getTrayIconPath } from './utils';
 import { createMainWindow } from './windowManager';
 import { setupIpcHandlers } from './ipcHandlers';
+import './auth';
 
 interface AppExtended extends Electron.App {
     isQuiting: boolean;

@@ -148,9 +148,14 @@ export function initializeWindowTracking(): void {
     console.error('Critical error loading get-windows module:', error);
   }
 
-  if (getLoginStatus()) {
-    console.log('User is logged in, starting active window tracking...');
-    startActiveWindowTracking();
+  try {
+    const loginStatus = getLoginStatus();
+    if (loginStatus.isLoggedIn) {
+      console.log('User is logged in, starting active window tracking...');
+      startActiveWindowTracking();
+    }
+  } catch (error) {
+    console.error('Error checking login status during window tracking initialization:', error);
   }
 
   app.on('window-all-closed', () => {
