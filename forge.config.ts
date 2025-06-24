@@ -3,8 +3,7 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
-const config: ForgeConfig = {
-  packagerConfig: {
+const config: ForgeConfig = {  packagerConfig: {
     asar: {
       unpack: "node_modules/**"
     },
@@ -17,34 +16,49 @@ const config: ForgeConfig = {
       "!node_modules/node-addon-api",
       "!node_modules/@mapbox",
       "!node_modules/node-pre-gyp"
-    ],
-    executableName: "hourglass",
-    icon: "assets/icons/hourglass",
-    extraResource: ['assets'],
+    ],    
+    executableName: "Hourglass",
+    icon: "./assets/icons/hourglass",
+    extraResource: ['assets'],    win32metadata: {
+      CompanyName: 'Hourglass',
+      FileDescription: 'Hourglass Time Tracking Application',
+      ProductName: 'Hourglass',
+      OriginalFilename: 'Hourglass.exe',
+      InternalName: 'Hourglass',
+    },
   },
-  rebuildConfig: {},
-    makers: [
-    {
+  rebuildConfig: {},  
+  makers: [    {
       name: '@electron-forge/maker-squirrel',
       config: {
-        name: 'Hourglass',
-        setupIcon: 'assets/icons/hourglass.ico',
-        shortcutName: 'Hourglass',
+        name: 'hourglass',
+        exe: 'Hourglass.exe',
+        setupIcon: './assets/icons/hourglass.ico',
+        setupExe: 'HourglassSetup.exe',
+        title: 'Hourglass',
+        authors: 'Hourglass Team',
+        owners: 'Hourglass Team',
+        description: 'Hourglass Time Tracking Application',
+        version: '0.0.4',
+        remoteReleases: false,
+        usePackageJson: false,
+        // Essential shortcut options
         createDesktopShortcut: true,
         createStartMenuShortcut: true,
-        shortcutFolderName: 'Hourglass'
-      },
+        shortcutName: 'Hourglass',
+      },    
     },
     {
       name: '@electron-forge/maker-zip',
       config: {},
       platforms: ['darwin','win32','linux'],
-    },    {
+    },
+    {
       name: '@electron-forge/maker-dmg',
       config: {
         format: 'UDZO',
         name: 'Hourglass',
-        icon: 'assets/icons/hourglass.icns',
+        icon: './assets/icons/hourglass.icns',
       },
       platforms: ['darwin'],
     },
@@ -52,19 +66,19 @@ const config: ForgeConfig = {
       name: '@electron-forge/maker-deb',
       config: {
         options: {
-          icon: 'assets/icons/hourglass.png',
+          icon: './assets/icons/hourglass.png',
         }
       },
-    },
-    {
+    },    {
       name: '@electron-forge/maker-rpm',
       config: {
         options: {
-          icon: 'assets/icons/hourglass.png',
+          icon: './assets/icons/hourglass.png',
         }
       },
-    },  ],
-  plugins: [    
+    },
+  ],
+  plugins: [
     new AutoUnpackNativesPlugin({
       packagedModules: ['better-sqlite3', 'get-windows', 'bindings', 'prebuild-install', 'file-uri-to-path', 'electron-log', 'electron-squirrel-startup']
     }),
