@@ -19,8 +19,11 @@ const config: ForgeConfig = {  packagerConfig: {
     ],    
     executableName: "Hourglass",
     icon: "./assets/icons/hourglass",
-    extraResource: ['assets'],    win32metadata: {
-      CompanyName: 'Hourglass',
+    extraResource: ['assets'],
+    // Better app info for searchability
+    appBundleId: 'com.hourglass.timetracker',
+    appCategoryType: 'public.app-category.productivity',    win32metadata: {
+      CompanyName: 'Hourglass Team',
       FileDescription: 'Hourglass Time Tracking Application',
       ProductName: 'Hourglass',
       OriginalFilename: 'Hourglass.exe',
@@ -29,8 +32,7 @@ const config: ForgeConfig = {  packagerConfig: {
   },
   rebuildConfig: {},  
   makers: [    {
-      name: '@electron-forge/maker-squirrel',
-      config: {
+      name: '@electron-forge/maker-squirrel',      config: {
         name: 'hourglass',
         exe: 'Hourglass.exe',
         setupIcon: './assets/icons/hourglass.ico',
@@ -46,7 +48,11 @@ const config: ForgeConfig = {  packagerConfig: {
         createDesktopShortcut: true,
         createStartMenuShortcut: true,
         shortcutName: 'Hourglass',
-      },    
+        // Force shortcut creation
+        loadingGif: false,
+        // Ensure proper installation
+        setupMsi: false,
+      },
     },
     {
       name: '@electron-forge/maker-zip',
