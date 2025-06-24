@@ -1,3 +1,4 @@
+import squirrelStartup from 'electron-squirrel-startup';
 import AutoLaunch from 'electron-auto-launch';
 import { app as appBase, BrowserWindow, Tray, shell } from 'electron';
 import { initializeDatabase } from './database';
@@ -12,39 +13,8 @@ import path from 'path';
 import './auth';
 
 // Handle Squirrel events for Windows (must be before any app usage)
-if (process.platform === 'win32') {
-  const handleSquirrelEvent = (): boolean => {
-    if (process.argv.length === 1) {
-      return false;
-    }
-
-    const squirrelEvent = process.argv[1];
-    
-    switch (squirrelEvent) {
-      case '--squirrel-install':
-      case '--squirrel-updated':
-        // Just exit gracefully for install/update events
-        // The Start Menu shortcut will be created by the Squirrel config
-        setTimeout(() => process.exit(0), 1000);
-        return true;
-
-      case '--squirrel-uninstall':
-        // Clean up on uninstall
-        setTimeout(() => process.exit(0), 1000);
-        return true;
-
-      case '--squirrel-obsolete':
-        // This is called on the outgoing version during updates
-        setTimeout(() => process.exit(0), 1000);
-        return true;
-    }
-
-    return false;
-  };
-  if (handleSquirrelEvent()) {
-    // Squirrel event handled, don't continue with normal app startup
-    // The process.exit() calls in the handler will terminate the app
-  }
+if (squirrelStartup) {
+  appBase.quit();
 }
 
 interface AppExtended extends Electron.App {
@@ -58,18 +28,31 @@ app.setName('Hourglass');
 
 const hourglassAutoLauncher = new AutoLaunch({
   name: 'Hourglass',
-  path: app.getPath('exe'), 
+  path: app.getPath('exe'),
+  isHidden: true, // Start minimized to tray
 });
 
-hourglassAutoLauncher.isEnabled().then((isEnabled) => {
-  if (!isEnabled) {
-    hourglassAutoLauncher.enable();
+// Ensure auto-launch is enabled and async
+const setupAutoLaunch = async () => {
+  try {
+    const isEnabled = await hourglassAutoLauncher.isEnabled();
+    if (!isEnabled) {
+      await hourglassAutoLauncher.enable();
+      log.info('Auto-launch enabled for Hourglass');
+    } else {
+      log.info('Auto-launch already enabled for Hourglass');
+    }
+  } catch (error) {
+    log.error('Failed to setup auto-launch:', error);
   }
-});
+};
+
+setupAutoLaunch();
 
 export let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 
+// Single instance lock
 if (!ensureSingleInstance()) {
     process.exit(0);
 }
@@ -85,22 +68,29 @@ app.whenReady().then(() => {
         const dbInitialized = initializeDatabase();
         if (!dbInitialized) {
             log.error('Failed to initialize database');
-        }
+        }        // Detect installation and manual launch scenarios
+        const wasOpenedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin;
+        const hasHiddenFlag = process.argv.includes('--hidden');
+        const isFirstRun = !app.getPath('userData') || !require('fs').existsSync(require('path').join(app.getPath('userData'), 'appdata.sqlite'));
+        
+        // Show window on: first install, manual launch, or development
+        const shouldStartHidden = (wasOpenedAtLogin || hasHiddenFlag) && !isFirstRun && app.isPackaged;
 
-        const { window, tray: appTray } = createMainWindow(app);
+        log.info('Startup conditions:', { wasOpenedAtLogin, hasHiddenFlag, isFirstRun, isPackaged: app.isPackaged, shouldStartHidden });const { window, tray: appTray } = createMainWindow(app, shouldStartHidden);
         mainWindow = window;
         tray = appTray;
+
+        log.info(shouldStartHidden ? 'App started hidden to system tray' : 'App started with visible window');
+
         initializeWindowTracking();
         setupIpcHandlers();
         setupDeepLinkHandlers(mainWindow);
     } catch (error) {
         log.error('Error during app initialization:', error);
-    }
-
-    app.on('activate', () => {
+    }    app.on('activate', () => {
         log.info('App activate event triggered');
         if (BrowserWindow.getAllWindows().length === 0) {
-            const { window } = createMainWindow(app);
+            const { window } = createMainWindow(app, false); // Show window on manual activation
             mainWindow = window;
         }
     });

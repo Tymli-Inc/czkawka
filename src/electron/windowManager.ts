@@ -14,13 +14,15 @@ interface AppExtended {
   isQuiting: boolean;
 }
 
-export function createMainWindow(app: AppExtended): { window: BrowserWindow, tray: Tray } {
-  log.info('createMainWindow called');
+export function createMainWindow(app: AppExtended, shouldStartHidden: boolean = false): { window: BrowserWindow, tray: Tray } {
+  log.info('createMainWindow called, shouldStartHidden:', shouldStartHidden);
+  
   const mainWindow = new BrowserWindow({
     width: 1300,
     height: 800,
     frame: false, // Remove the default window frame
     titleBarStyle: 'hidden', // Hide the title bar
+    show: false, // Never show window initially
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -45,6 +47,17 @@ export function createMainWindow(app: AppExtended): { window: BrowserWindow, tra
     // In production, load the built files
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
+
+  // Only show window after content is loaded and if not starting hidden
+  mainWindow.once('ready-to-show', () => {
+    if (!shouldStartHidden) {
+      mainWindow.show();
+      log.info('Window shown after ready-to-show');
+    } else {
+      mainWindow.setSkipTaskbar(true);
+      log.info('Window kept hidden and removed from taskbar');
+    }
+  });
 
   if (!require('electron').app.isPackaged) {
     log.info('Opening DevTools');
