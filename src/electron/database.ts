@@ -7,6 +7,9 @@ const fs = require('fs');
 
 export let db: any;
 
+// Log when database module is loaded
+log.info('Database module loaded');
+
 function loadBetterSqlite3(): boolean {
   const possiblePaths = [];
   
@@ -107,5 +110,6 @@ export function initializeDatabase(): boolean {
 }
 
 export function getDatabase() {
+  log.info('getDatabase called');
   return db;
 }

@@ -1,6 +1,10 @@
 import path from 'path';
 import { BrowserWindow, Tray, Menu } from 'electron';
 import { getTrayIconPath } from './utils';
+import log from 'electron-log';
+
+// Log when windowManager module is loaded
+log.info('windowManager module loaded');
 
 // Declare constants for Vite dev server URL and name
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -11,6 +15,7 @@ interface AppExtended {
 }
 
 export function createMainWindow(app: AppExtended): { window: BrowserWindow, tray: Tray } {
+  log.info('createMainWindow called');
   const mainWindow = new BrowserWindow({
     width: 1300,
     height: 800,
@@ -25,23 +30,31 @@ export function createMainWindow(app: AppExtended): { window: BrowserWindow, tra
     minWidth: 1100,
   });
 
+  log.info('Main window created with bounds', mainWindow.getBounds());
+
   // Remove the default menu bar
+  log.info('Hiding default menu bar');
   mainWindow.setMenuBarVisibility(false);
 
   // In development, use the Vite dev server
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    log.info('Loading dev server URL:', MAIN_WINDOW_VITE_DEV_SERVER_URL);
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
+    log.info('Loading production index.html');
     // In production, load the built files
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
 
   if (!require('electron').app.isPackaged) {
+    log.info('Opening DevTools');
     mainWindow.webContents.openDevTools();
   }
   mainWindow.on('close', (event) => {
+    log.info('Main window close event');
     if (!app.isQuiting) {
       event.preventDefault();
+      log.info('Prevented default close, hiding window');
       mainWindow.hide();
       mainWindow.setSkipTaskbar(true);
     }
@@ -49,20 +62,25 @@ export function createMainWindow(app: AppExtended): { window: BrowserWindow, tra
 
   // Listen for maximize/unmaximize events to keep UI in sync
   mainWindow.on('maximize', () => {
+    log.info('Main window maximized');
     mainWindow.webContents.send('window-maximized', true);
   });
 
   mainWindow.on('unmaximize', () => {
+    log.info('Main window unmaximized');
     mainWindow.webContents.send('window-maximized', false);
   });
 
   const tray = createTray(mainWindow, app);
+  log.info('Tray created');
 
   return { window: mainWindow, tray };
 }
 
 function createTray(mainWindow: BrowserWindow, app: AppExtended): Tray {
+  log.info('createTray called');
   const tray = new Tray(getTrayIconPath());
+  log.info('Tray icon set to path:', getTrayIconPath());
   const contextMenu = Menu.buildFromTemplate([
     {
       label: 'Show App',
@@ -79,11 +97,14 @@ function createTray(mainWindow: BrowserWindow, app: AppExtended): Tray {
       },
     },
   ]);
+  log.info('Tray context menu built');
   
   tray.setToolTip('Hourglass');
+  log.info('Tray tooltip set');
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {
+    log.info('Tray click event');
     mainWindow.show();
     mainWindow.setSkipTaskbar(false);
   });

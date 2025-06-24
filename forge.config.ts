@@ -27,8 +27,12 @@ const config: ForgeConfig = {
     {
       name: '@electron-forge/maker-squirrel',
       config: {
-        name: 'hourglass',
+        name: 'Hourglass',
         setupIcon: 'assets/icons/hourglass.ico',
+        shortcutName: 'Hourglass',
+        createDesktopShortcut: true,
+        createStartMenuShortcut: true,
+        shortcutFolderName: 'Hourglass'
       },
     },
     {

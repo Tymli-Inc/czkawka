@@ -20,6 +20,9 @@ let isCurrentlyIdle = false;
 let idleStartTime: number | null = null;
 let lastActiveTime = Date.now();
 
+// Log when windowTracking module is loaded
+log.info('windowTracking module loaded');
+
 function loadGetWindows(): boolean {
   const possiblePaths = [];
   
@@ -89,6 +92,7 @@ function loadSystemIdleTime(): boolean {
 }
 
 async function trackActiveWindow() {
+  log.info('trackActiveWindow called');
   try {
     if (!getActiveWindow) {
       log.error('get-windows is not available');
@@ -102,6 +106,7 @@ async function trackActiveWindow() {
 
     const activeWindowCurrent = await getActiveWindow();
     if (activeWindowCurrent) {
+      log.info('Active window detected:', { id: activeWindowCurrent.id, title: activeWindowCurrent.title });
       // Update last active time when window activity is detected
       lastActiveTime = Date.now();
       
@@ -150,7 +155,7 @@ async function trackActiveWindow() {
       }
 
     } else {
-      log.info('No active window found');
+      log.info('No active window detected');
     }
   } catch (error) {
     log.error('Error tracking active window:', error);
@@ -158,6 +163,7 @@ async function trackActiveWindow() {
 }
 
 async function saveWindowToDatabase(windowData: any) {
+  log.info('saveWindowToDatabase called with:', windowData);
   try {
     const stmt = db.prepare(
         'INSERT INTO active_windows (title, unique_id, timestamp, session_length) VALUES (?, ?, ?, ?)'
@@ -169,6 +175,7 @@ async function saveWindowToDatabase(windowData: any) {
 }
 
 async function updateWindowSessionDuration(timestamp: number, sessionDuration: number) {
+  log.info('updateWindowSessionDuration called with timestamp:', timestamp, 'duration:', sessionDuration);
   try {
     const updateStmt = db.prepare(
         'UPDATE active_windows SET session_length = ? WHERE timestamp = ?'
@@ -180,8 +187,10 @@ async function updateWindowSessionDuration(timestamp: number, sessionDuration: n
 }
 
 async function checkIdleStatus() {
+  log.info('checkIdleStatus called');
   try {
     if (!getSystemIdleTime) {
+      log.info('Using fallback idle detection');
       // Fallback: use time since last window change as idle indicator
       const timeSinceLastActive = Date.now() - lastActiveTime;
       const isIdle = timeSinceLastActive > IDLE_THRESHOLD;
@@ -191,19 +200,19 @@ async function checkIdleStatus() {
     }
 
     const idleTimeMs = getSystemIdleTime();
+    log.info('System idle time (ms):', idleTimeMs);
     const isIdle = idleTimeMs > IDLE_THRESHOLD;
-    
     await handleIdleStatusChange(isIdle);
-    
   } catch (error) {
     log.error('Error checking idle status:', error);
   }
 }
 
 async function handleIdleStatusChange(isIdle: boolean) {
+  log.info('handleIdleStatusChange called, isIdle:', isIdle);
   if (isIdle && !isCurrentlyIdle) {
     // User just became idle
-    log.info('User became idle');
+    log.info('User became idle at', idleStartTime);
     isCurrentlyIdle = true;
     idleStartTime = Date.now();
     
@@ -225,7 +234,7 @@ async function handleIdleStatusChange(isIdle: boolean) {
     
   } else if (!isIdle && isCurrentlyIdle) {
     // User just became active
-    log.info('User became active');
+    log.info('User became active after idle');
     isCurrentlyIdle = false;
     lastActiveTime = Date.now();
     
@@ -269,6 +278,7 @@ async function handleIdleStatusChange(isIdle: boolean) {
 }
 
 async function saveIdleEventToDatabase(eventType: 'idle_start' | 'idle_end', timestamp: number, duration?: number) {
+  log.info('saveIdleEventToDatabase called with:', eventType, timestamp, duration);
   try {
     const stmt = db.prepare(
       'INSERT INTO idle_events (event_type, timestamp, duration) VALUES (?, ?, ?)'
@@ -301,6 +311,7 @@ async function saveIdleEventToDatabase(eventType: 'idle_start' | 'idle_end', tim
 }
 
 export function startActiveWindowTracking() {
+  log.info('startActiveWindowTracking called');
   log.info('Starting active window tracking...');
   trackActiveWindow();
   trackingInterval = setInterval(trackActiveWindow, 1000);
@@ -316,6 +327,7 @@ export function startActiveWindowTracking() {
 }
 
 export function stopActiveWindowTracking() {
+  log.info('stopActiveWindowTracking called');
   if (trackingInterval) {
     clearInterval(trackingInterval);
     trackingInterval = null;
@@ -344,6 +356,7 @@ export function stopActiveWindowTracking() {
 }
 
 export function initializeWindowTracking(): void {
+  log.info('initializeWindowTracking called');
   try {
     loadGetWindows();
     loadSystemIdleTime();
@@ -391,6 +404,7 @@ export function getMemoryStore() {
 }
 
 export async function getCurrentActiveWindow() {
+  log.info('getCurrentActiveWindow called');
   try {
     // Return the current window being tracked
     const currentWindow = memoryStore.get('currentWindow');
@@ -404,7 +418,7 @@ export async function getCurrentActiveWindow() {
     log.info('No active window being tracked');
     return null;
   } catch (error) {
-    log.error('Error getting active window:', error);
+    log.error('Error getting current active window:', error);
     return {
       error: typeof error === 'object' && error !== null && 'message' in error
           ? (error as { message: string }).message
@@ -414,10 +428,12 @@ export async function getCurrentActiveWindow() {
 }
 
 export function getActiveWindows() {
+  log.info('getActiveWindows called');
   return db.prepare('SELECT * FROM active_windows ORDER BY timestamp DESC').all();
 }
 
 export function compileWindowData(days?: number) {
+  log.info('compileWindowData called with days:', days);
   let query = 'SELECT title, SUM(session_length) FROM active_windows';
   let params: any[] = [];
   
@@ -442,6 +458,7 @@ export function compileWindowData(days?: number) {
 }
 
 export function getTrackingTimes(days?: number) {
+  log.info('getTrackingTimes called with days:', days);
   try {
     let query = 'SELECT * FROM tracking_times';
     let params: any[] = [];
@@ -474,6 +491,7 @@ export function getTrackingTimes(days?: number) {
 }
 
 export function getIdleEvents(days?: number) {
+  log.info('getIdleEvents called with days:', days);
   try {
     let query = 'SELECT * FROM idle_events';
     let params: any[] = [];
@@ -506,6 +524,7 @@ export function getIdleEvents(days?: number) {
 }
 
 export function getIdleStatistics(days?: number) {
+  log.info('getIdleStatistics called with days:', days);
   try {
     let query = `
       SELECT 
@@ -548,6 +567,7 @@ export function getIdleStatistics(days?: number) {
 }
 
 export function getCurrentIdleStatus() {
+  log.info('getCurrentIdleStatus called');
   return {
     isIdle: isCurrentlyIdle,
     idleStartTime: idleStartTime,
@@ -558,6 +578,7 @@ export function getCurrentIdleStatus() {
 }
 
 export function setIdleThreshold(thresholdMs: number) {
+  log.info('setIdleThreshold called with:', thresholdMs);
   if (thresholdMs > 0) {
     // Note: This would require modifying the IDLE_THRESHOLD constant
     // In a production app, you'd want to store this in a config file or database
