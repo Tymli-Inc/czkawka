@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import { getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes } from './windowTracking';
+import { getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes, getIdleEvents, getIdleStatistics, getCurrentIdleStatus, setIdleThreshold } from './windowTracking';
 import {clearUserToken, getLoginStatus, getUserToken, handleLogin, storeUserToken, getUserData} from './auth';
 import log from 'electron-log';
 
@@ -35,6 +35,67 @@ export function setupIpcHandlers() {
           ? (error as { message: string }).message
           : String(error),
         data: []
+      };
+    }
+  });
+
+  ipcMain.handle('get-idle-events', async (event, days?: number) => {
+    try {
+      return getIdleEvents(days);
+    } catch (error) {
+      log.error('Error getting idle events:', error);
+      return {
+        success: false,
+        error: typeof error === 'object' && error !== null && 'message' in error
+          ? (error as { message: string }).message
+          : String(error),
+        data: []
+      };
+    }
+  });
+
+  ipcMain.handle('get-idle-statistics', async (event, days?: number) => {
+    try {
+      return getIdleStatistics(days);
+    } catch (error) {
+      log.error('Error getting idle statistics:', error);
+      return {
+        success: false,
+        error: typeof error === 'object' && error !== null && 'message' in error
+          ? (error as { message: string }).message
+          : String(error),
+        data: null
+      };
+    }
+  });
+
+  ipcMain.handle('get-current-idle-status', () => {
+    try {
+      return getCurrentIdleStatus();
+    } catch (error) {
+      log.error('Error getting current idle status:', error);
+      return {
+        isIdle: false,
+        idleStartTime: null,
+        idleDuration: 0,
+        lastActiveTime: Date.now(),
+        error: typeof error === 'object' && error !== null && 'message' in error
+          ? (error as { message: string }).message
+          : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('set-idle-threshold', async (event, thresholdMs: number) => {
+    try {
+      return setIdleThreshold(thresholdMs);
+    } catch (error) {
+      log.error('Error setting idle threshold:', error);
+      return {
+        success: false,
+        error: typeof error === 'object' && error !== null && 'message' in error
+          ? (error as { message: string }).message
+          : String(error)
       };
     }
   });

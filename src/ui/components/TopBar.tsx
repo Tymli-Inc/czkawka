@@ -1,6 +1,7 @@
 import React, { useState, useEffect, CSSProperties } from 'react';
 import styles from "./topbar.module.css"; 
 import { Link, useLocation } from 'react-router-dom';
+//@ts-ignore
 import hourglassLogo from '../../../assets/icons/hourglass.png';
 const TopBar = () => {
   const [isMaximized, setIsMaximized] = useState(false);

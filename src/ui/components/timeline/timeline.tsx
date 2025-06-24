@@ -137,6 +137,7 @@ const Timeline: React.FC = () => {
       const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
       const recentWindows = windowsResponse.filter(window => window.timestamp >= oneDayAgo);
       setWindowRecords(recentWindows);
+      console.log('Fetched tracking sessions:', recentWindows);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred while fetching data');

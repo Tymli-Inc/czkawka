@@ -36,6 +36,11 @@ interface ElectronAPI {
   onWindowMaximized: (callback: (isMaximized: boolean) => void) => void;
   removeWindowListener: () => void;
   getTrackingTimes: (days?: number) => Promise<{ success: boolean; data: any[]; error?: string }>;
+  // Idle detection APIs
+  getIdleEvents: (days?: number) => Promise<{ success: boolean; data: any[]; error?: string }>;
+  getIdleStatistics: (days?: number) => Promise<{ success: boolean; data: any; error?: string }>;
+  getCurrentIdleStatus: () => Promise<{ isIdle: boolean; idleStartTime: number | null; idleDuration: number; lastActiveTime: number; idleThreshold: number; error?: string }>;
+  setIdleThreshold: (thresholdMs: number) => Promise<{ success: boolean; message?: string; oldThreshold?: number; newThreshold?: number; error?: string }>;
 };
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -114,5 +119,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   removeWindowListener: () => {
     ipcRenderer.removeAllListeners('window-maximized');
+  },
+
+  // Idle detection APIs
+  getIdleEvents: async (days?: number) => {
+    return await ipcRenderer.invoke('get-idle-events', days);
+  },
+
+  getIdleStatistics: async (days?: number) => {
+    return await ipcRenderer.invoke('get-idle-statistics', days);
+  },
+
+  getCurrentIdleStatus: async () => {
+    return await ipcRenderer.invoke('get-current-idle-status');
+  },
+
+  setIdleThreshold: async (thresholdMs: number) => {
+    return await ipcRenderer.invoke('set-idle-threshold', thresholdMs);
   }
 } as ElectronAPI);

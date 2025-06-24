@@ -73,12 +73,21 @@ export function initializeDatabase(): boolean {
         timestamp INTEGER,
         session_length INTEGER DEFAULT 0
       )
-    `).run();
-    db.prepare(`
+    `).run();    db.prepare(`
      CREATE TABLE IF NOT EXISTS tracking_times (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_start INTEGER DEFAULT 0, 
         session_end INTEGER DEFAULT 0
+      )
+    `).run();
+    
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS idle_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_type TEXT NOT NULL,
+        timestamp INTEGER NOT NULL,
+        duration INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `).run();
 

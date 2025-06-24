@@ -33,6 +33,8 @@ declare global {
       onWindowMaximized: (callback: (isMaximized: boolean) => void) => void;
       removeWindowListener: () => void;
       getTrackingTimes: (days?: number) => Promise<{ success: boolean; data: any[]; error?: string }>;
+      getCurrentIdleStatus: () => Promise<{ isIdle: boolean; idleStartTime: number | null; idleDuration: number; lastActiveTime: number; idleThreshold: number; error?: string }>;
+      getIdleStatistics: (days?: number) => Promise<{ success: boolean; data: any; error?: string }>;
     };
   }
 }
