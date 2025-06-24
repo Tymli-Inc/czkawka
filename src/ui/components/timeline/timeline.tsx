@@ -152,8 +152,14 @@ const Timeline: React.FC = () => {
       // Full day view
       const startOfDay = new Date(selectedDate);
       startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(selectedDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      const now = new Date();
+      let endOfDay: Date;
+      if (selectedDate.toDateString() === now.toDateString()) {
+        endOfDay = new Date(now.getTime() + 60 * 60 * 1000);
+      } else {
+        endOfDay = new Date(selectedDate);
+        endOfDay.setHours(23, 59, 59, 999);
+      }
       startTime = startOfDay.getTime();
       endTime = endOfDay.getTime();
     } else {
@@ -168,8 +174,8 @@ const Timeline: React.FC = () => {
       const duration = zoomDuration[zoomLevel];
       
       if (zoomStartTime !== null) {
-        startTime = zoomStartTime;
-        endTime = zoomStartTime + duration;
+        startTime = zoomStartTime - duration;
+        endTime = zoomStartTime;
       } else {
         // Default to current time if no zoom start time set
         const now = Date.now();
@@ -357,12 +363,10 @@ const Timeline: React.FC = () => {
   };
 
   const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    const weekday = date.toLocaleDateString('en-US', { weekday: 'long' });
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-US', { month: 'long' });
+    return `${weekday}, ${day} ${month}`;
   };  const getCurrentTimePosition = (): number | null => {
     const { start, end } = timeRange;
     
@@ -528,9 +532,11 @@ const Timeline: React.FC = () => {
             ←
           </button>
           <h2>{formatDate(selectedDate)}</h2>
-          <button onClick={() => navigateDate('next')} className="nav-button">
-            →
-          </button>
+              {selectedDate.toDateString() !== new Date().toDateString() && (
+              <button onClick={() => navigateDate('next')} className="nav-button">
+                →
+              </button>
+              )}
         </div><div className="timeline-stats">
           <div className="stat">
             <span className="stat-label">Active Time:</span>
@@ -565,7 +571,7 @@ const Timeline: React.FC = () => {
               <div className="zoom-indicator">
                 <div className="zoom-indicator-icon">🔍</div>
                 <span>
-                  {formatTime(zoomStartTime)} - {formatTime(zoomStartTime + getZoomDuration())}
+                  {formatTime(zoomStartTime - getZoomDuration())} -{formatTime(zoomStartTime)}
                 </span>
               </div>
             )}
