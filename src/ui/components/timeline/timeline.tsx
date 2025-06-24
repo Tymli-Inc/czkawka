@@ -1,19 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './timeline.css';
-
-interface TrackingSession {
-  id: number;
-  session_start: number;
-  session_end: number;
-}
-
-interface WindowRecord {
-  id: number;
-  title: string;
-  unique_id: number;
-  timestamp: number;
-  session_length: number;
-}
+import { CategoryData, CompileDataResponse, WindowRecord, TrackingSession } from '../../../types/windowTracking';
 
 interface TimelineBar {
   id: string;
@@ -33,15 +20,17 @@ interface TimeMarker {
 const Timeline: React.FC = () => {
   const [trackingSessions, setTrackingSessions] = useState<TrackingSession[]>([]);
   const [windowRecords, setWindowRecords] = useState<WindowRecord[]>([]);
+  const [categorizedData, setCategorizedData] = useState<CategoryData[]>([]);
   const [sessionBars, setSessionBars] = useState<TimelineBar[]>([]);
   const [windowBars, setWindowBars] = useState<TimelineBar[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState({ start: 0, end: 0 });
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [zoomLevel, setZoomLevel] = useState<'day' | '12h' | '6h' | '3h' | '1h'>('day');  const [zoomStartTime, setZoomStartTime] = useState<number | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());  const [zoomLevel, setZoomLevel] = useState<'day' | '12h' | '6h' | '3h' | '1h'>('day');  const [zoomStartTime, setZoomStartTime] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [legendStartIndex, setLegendStartIndex] = useState(0);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   // Generate colors for different windows - enhanced palette with more unique colors
   const windowColors = [
     '#FF6B6B', 
@@ -90,13 +79,38 @@ const Timeline: React.FC = () => {
     '#1e3799', 
     '#38ada9'  
   ];
-
   const getWindowColor = (title: string): string => {
+    // First check if the app belongs to a category and use category-based colors
+    if (categorizedData.length > 0) {
+      for (const category of categorizedData) {
+        const appInCategory = category.appData.find(app => app.title === title);
+        if (appInCategory) {
+          return getCategoryColor(category.title);
+        }
+      }
+    }
+    
+    // Fallback to hash-based color
     const hash = title.split('').reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
       return a & a;
     }, 0);
     return windowColors[Math.abs(hash) % windowColors.length];
+  };
+
+  const getCategoryColor = (categoryName: string): string => {
+    const categoryColors: { [key: string]: string } = {
+      'development': '#4ECDC4',
+      'social': '#FF6B6B', 
+      'entertainment': '#FECA57',
+      'productivity': '#45B7D1',
+      'web_browsers': '#96CEB4',
+      'system': '#778ca3',
+      'utilities': '#54A0FF',
+      'uncategorized': '#C44569'
+    };
+    
+    return categoryColors[categoryName] || '#C44569'; // Default to purple if category not found
   };
   // Fetch data on component mount
   useEffect(() => {
@@ -110,15 +124,12 @@ const Timeline: React.FC = () => {
     }, 60000); // Update every minute
 
     return () => clearInterval(interval);
-  }, []);
-  // Process data when either dataset changes
+  }, []);  // Process data when either dataset changes
   useEffect(() => {
     processTimelineData();
     // Reset legend pagination when data changes
     setLegendStartIndex(0);
-  }, [trackingSessions, windowRecords, selectedDate, zoomLevel, zoomStartTime]);
-
-  const fetchTimelineData = async () => {
+  }, [trackingSessions, windowRecords, categorizedData, selectedDate, zoomLevel, zoomStartTime]);  const fetchTimelineData = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -131,20 +142,34 @@ const Timeline: React.FC = () => {
         throw new Error(trackingResponse.error || 'Failed to fetch tracking times');
       }
 
-      // Fetch window records
+      // Fetch categorized window data for the past 1 day
+      const categorizedResponse: CompileDataResponse = await window.electronAPI.compileData(1);
+      if (categorizedResponse.success) {
+        setCategorizedData(categorizedResponse.data);
+        console.log('Fetched categorized data:', categorizedResponse.data);
+        
+        // Log category summary for debugging
+        categorizedResponse.data.forEach(category => {
+          console.log(`Category: ${category.title}, Total Time: ${category.session_length}ms, Apps: ${category.appData.length}`);
+          category.appData.forEach(app => {
+            console.log(`  - ${app.title}: ${app.session_length}ms`);
+          });
+        });
+      }
+
+      // Fetch raw window data with timestamps for timeline visualization
       const windowsResponse = await window.electronAPI.getActiveWindows();
-      // Filter windows for the past 1 day
       const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
       const recentWindows = windowsResponse.filter(window => window.timestamp >= oneDayAgo);
       setWindowRecords(recentWindows);
-      console.log('Fetched tracking sessions:', recentWindows);
+      console.log('Fetched raw window data for timeline:', recentWindows);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
     } finally {
       setLoading(false);
     }
-  };  const processTimelineData = () => {
+  };const processTimelineData = () => {
     // Calculate time range based on zoom level
     let startTime: number;
     let endTime: number;
@@ -490,6 +515,16 @@ const Timeline: React.FC = () => {
     }
   };
 
+  const handleCategoryClick = (category: CategoryData) => {
+    setSelectedCategory(category);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedCategory(null);
+  };
+
   if (loading) {
     return (
       <div className="timeline-container">
@@ -538,7 +573,7 @@ const Timeline: React.FC = () => {
                 →
               </button>
               )}
-        </div><div className="timeline-stats">
+        </div>        <div className="timeline-stats">
           <div className="stat">
             <span className="stat-label">Active Time:</span>
             <span className="stat-value">{formatDuration(totalCombinedActiveTime)}</span>
@@ -551,8 +586,14 @@ const Timeline: React.FC = () => {
             <span className="stat-label">Applications:</span>
             <span className="stat-value">{uniqueApplications}</span>
           </div>
+          {categorizedData.length > 0 && (
+            <div className="stat">
+              <span className="stat-label">Categories:</span>
+              <span className="stat-value">{categorizedData.length}</span>
+            </div>
+          )}
         </div>
-      </div>      <div className="timeline-content">        <div className="timeline-header-label">
+      </div><div className="timeline-content">        <div className="timeline-header-label">
           <span>TIMELINE</span>
           <div className="timeline-header-controls">
             {/* Zoom Controls */}
@@ -680,75 +721,81 @@ const Timeline: React.FC = () => {
               title={`Current time: ${formatTime(currentTime)}`}
             />
           )}
-        </div>        {/* Legend */}
-        {windowBars.length > 0 && (
-          <div className="timeline-legend">
-            <div className="legend-header">
-              <h4>Active Applications</h4>              {(() => {
-                const uniqueApps = Array.from(new Set(windowBars.map(bar => bar.title)));
-                const maxItemsVisible = 8; // 2 rows × 4 items per row
-                const pageCount = Math.ceil(uniqueApps.length / maxItemsVisible);
-                const currentPage = Math.floor(legendStartIndex / maxItemsVisible) + 1;
-                const maxPossibleIndex = (pageCount - 1) * maxItemsVisible;
-                const canNavigatePrev = currentPage > 1;
-                const canNavigateNext = currentPage < pageCount;
-                
-                return (uniqueApps.length > maxItemsVisible) && (
-                  <div className="legend-navigation">
-                    <button 
-                      onClick={() => navigateLegend('prev')} 
-                      className={`legend-nav-button ${!canNavigatePrev ? 'disabled' : ''}`}
-                      disabled={!canNavigatePrev}
-                    >
-                      ‹
-                    </button>
-                    <span className="legend-page-indicator">
-                      {currentPage} / {pageCount}
-                    </span>
-                    <button 
-                      onClick={() => navigateLegend('next')} 
-                      className={`legend-nav-button ${!canNavigateNext ? 'disabled' : ''}`}
-                      disabled={!canNavigateNext}
-                    >
-                      ›
-                    </button>
+        </div>        {/* Category Modal */}
+        {isModalOpen && selectedCategory && (
+          <div className="modal-overlay" onClick={closeModal}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>
+                  <div 
+                    className="category-color-inline" 
+                    style={{ backgroundColor: getCategoryColor(selectedCategory.title) }}
+                  ></div>
+                  {selectedCategory.title} Category
+                </h3>
+                <button className="modal-close" onClick={closeModal}>×</button>
+              </div>
+              <div className="modal-body">
+                <div className="category-stats">
+                  <div className="stat">
+                    <span className="stat-label">Total Time:</span>
+                    <span className="stat-value">{formatDuration(selectedCategory.session_length)}</span>
                   </div>
-                );
-              })()}
-            </div>
-            <div className="legend-items">              {(() => {
-                const uniqueApps = Array.from(new Set(windowBars.map(bar => bar.title)));
-                const maxItemsVisible = 8; // 2 rows × 4 items per row
-                const visibleApps = uniqueApps.slice(legendStartIndex, legendStartIndex + maxItemsVisible);
-                
-                return visibleApps.map(title => {
-                  const color = getWindowColor(title || '');
-                  const totalTime = windowBars
-                    .filter(bar => bar.title === title)
-                    .reduce((sum, bar) => sum + (bar.endTime - bar.startTime), 0);
-                  
-                  return (
-                    <div key={title} className="legend-item">
+                  <div className="stat">
+                    <span className="stat-label">Applications:</span>
+                    <span className="stat-value">{selectedCategory.appData.length}</span>
+                  </div>
+                </div>
+                <div className="apps-list">
+                  <h4>Applications in this category:</h4>
+                  {selectedCategory.appData.map((app, index) => (
+                    <div key={index} className="app-item">
                       <div 
-                        className="legend-color" 
-                        style={{ backgroundColor: color }}
-                      />
-                      <span className="legend-title">{title}</span>
-                      <span className="legend-duration">{formatDuration(totalTime)}</span>
+                        className="app-color" 
+                        style={{ backgroundColor: getCategoryColor(selectedCategory.title) }}
+                      ></div>
+                      <span className="app-title">{app.title}</span>
+                      <span className="app-time">{formatDuration(app.session_length)}</span>
+                      <span className="app-percentage">
+                        ({((app.session_length / selectedCategory.session_length) * 100).toFixed(1)}%)
+                      </span>
                     </div>
-                  );
-                });
-              })()}
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        )}
-
-        {sessionBars.length === 0 && windowBars.length === 0 && (
+        )}        {sessionBars.length === 0 && windowBars.length === 0 && (
           <div className="timeline-empty">
             <p>No activity recorded for {formatDate(selectedDate)}</p>
           </div>
         )}
       </div>
+
+      {/* Category Summary - Moved below timeline */}
+      {categorizedData.length > 0 && (
+        <div className="category-summary">
+          <h4>Category Breakdown</h4>
+          <div className="category-list">
+            {categorizedData.map((category) => (
+              <div 
+                key={category.title} 
+                className="category-item clickable"
+                onClick={() => handleCategoryClick(category)}
+                title="Click to view apps in this category"
+              >
+                <div 
+                  className="category-color" 
+                  style={{ backgroundColor: getCategoryColor(category.title) }}
+                ></div>
+                <span className="category-name">{category.title}</span>
+                <span className="category-time">{formatDuration(category.session_length)}</span>
+                <span className="category-apps">({category.appData.length} apps)</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

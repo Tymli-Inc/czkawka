@@ -4,6 +4,7 @@ import { app } from 'electron';
 import {db} from "./database";
 import {getLoginStatus} from "./auth";
 import {mainWindow} from "./main";
+import { appCategories } from './app-categories';
 
 // Add idle detection import
 let getSystemIdleTime: any;
@@ -448,12 +449,75 @@ export function compileWindowData(days?: number) {
   const dataPool = db.prepare(query).all(...params);
 
   log.info('Data pool:', dataPool.length);
+  
+  // Function to find category for an app
+  function findAppCategory(appTitle: string): string {
+    const normalizedTitle = appTitle.toLowerCase();
+    
+    for (const [categoryName, categoryData] of Object.entries(appCategories.categories)) {
+      const found = categoryData.apps.some(app => 
+        normalizedTitle.includes(app.toLowerCase()) || 
+        app.toLowerCase().includes(normalizedTitle)
+      );
+      if (found) {
+        return categoryName;
+      }
+    }
+    return 'uncategorized';
+  }
+
+  // Group data by categories
+  const categoryData = new Map<string, {
+    title: string;
+    session_length: number;
+    appData: Array<{ title: string; session_length: number }>;
+  }>();
+
+  // Initialize categories
+  Object.keys(appCategories.categories).forEach(categoryName => {
+    categoryData.set(categoryName, {
+      title: categoryName,
+      session_length: 0,
+      appData: []
+    });
+  });
+
+  // Add uncategorized category
+  categoryData.set('uncategorized', {
+    title: 'uncategorized',
+    session_length: 0,
+    appData: []
+  });
+
+  // Process each app and categorize it
+  dataPool.forEach((item: any) => {
+    const appTitle = item.title;
+    const sessionLength = item['SUM(session_length)'] || 0;
+    const category = findAppCategory(appTitle);
+    
+    const categoryInfo = categoryData.get(category);
+    if (categoryInfo) {
+      categoryInfo.session_length += sessionLength;
+      categoryInfo.appData.push({
+        title: appTitle,
+        session_length: sessionLength
+      });
+    }
+  });
+
+  // Convert map to array and filter out categories with no data
+  const result = Array.from(categoryData.values())
+    .filter(category => category.session_length > 0)
+    .map(category => ({
+      title: category.title,
+      session_length: category.session_length,
+      appData: category.appData.sort((a, b) => b.session_length - a.session_length) // Sort apps by session length descending
+    }))
+    .sort((a, b) => b.session_length - a.session_length); // Sort categories by total session length descending
+
   return {
     success: true,
-    data: dataPool.map((item: any) => ({
-      title: item.title,
-      session_length: item['SUM(session_length)'] || 0
-    }))
+    data: result
   };
 }
 

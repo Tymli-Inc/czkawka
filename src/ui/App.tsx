@@ -8,14 +8,15 @@ import SettingsPage from './pages/SettingsPage';
 import AboutPage from './pages/AboutPage';
 import ScreentimePage from './pages/ScreentimePage';
 import CategoriesPage from './pages/CategoriesPage';
+import type { CompileDataResponse, ActiveWindow, WindowHistoryEntry } from '../types/windowTracking';
 
 declare global {
   interface Window {
     electronAPI: {
-      getActiveWindow: () => Promise<{ title: string ; id: number ; error?: string} | null>;
+      getActiveWindow: () => Promise<ActiveWindow | null>;
       saveActiveWindow: (data: { title: string; unique_id: number; error?: string }) => Promise<{ success: boolean }>;
-      getActiveWindows: () => Promise<Array<{ id: number; title: string; unique_id: number; timestamp: number, session_length: number }>>;
-      compileData: (days?: number) => Promise<{ success: boolean; data: { title: string; session_length: number }[] }>;
+      getActiveWindows: () => Promise<WindowHistoryEntry[]>;
+      compileData: (days?: number) => Promise<CompileDataResponse>;
       login: () => Promise<void>;
       onAuthSuccess: (callback: (userData: any) => void) => void;
       onAuthFailure: (callback: () => void) => void;

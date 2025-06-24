@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import moment from 'moment';
 import Timeline from '../components/timeline/timeline';
+import type { CompileDataResponse, ActiveWindow, WindowHistoryEntry } from '../../types/windowTracking';
 
 const HomePage = () => {
-  const [activeWindow, setActiveWindow] = useState<{ id: number; title: string; error?: string} | null>(null);
+  const [activeWindow, setActiveWindow] = useState<ActiveWindow | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<Array<{ id: number; title: string; unique_id: number; timestamp: number, session_length: number }>>([]);  const [compileData, setCompileData] = useState<{ success: boolean, data: {
-    title: string; session_length: number
-    }[] } | null>(null);
+  const [history, setHistory] = useState<WindowHistoryEntry[]>([]);
+  const [compileData, setCompileData] = useState<CompileDataResponse | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<'6hours' | '3days' | '7days'>('6hours');
   const [user, setUser] = useState<any>(null);
 
