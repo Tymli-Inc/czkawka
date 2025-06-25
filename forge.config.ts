@@ -3,6 +3,7 @@ import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
 import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
+import { version } from './package.json';
 const config: ForgeConfig = {  packagerConfig: {
     asar: {
       unpack: "node_modules/**"
@@ -41,7 +42,7 @@ const config: ForgeConfig = {  packagerConfig: {
         authors: 'Hourglass Team',
         owners: 'Hourglass Team',
         description: 'Hourglass Time Tracking Application',
-        version: '0.0.4',
+        version: version,
         remoteReleases: false,
         usePackageJson: false,
         // Essential shortcut options

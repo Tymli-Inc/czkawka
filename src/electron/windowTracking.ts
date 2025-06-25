@@ -187,9 +187,46 @@ async function updateWindowSessionDuration(timestamp: number, sessionDuration: n
   }
 }
 
+function isEntertainmentApp(appTitle: string): boolean {
+  const normalizedTitle = appTitle.toLowerCase();
+  
+  const isEntertainment = appCategories.categories.entertainment.apps.some(app => 
+    normalizedTitle.includes(app.toLowerCase()) || 
+    app.toLowerCase().includes(normalizedTitle)
+  );
+  
+  if (isEntertainment) {
+    log.info(`Entertainment app detected: ${appTitle}`);
+  }
+  
+  return isEntertainment;
+}
+
+function findAppCategory(appTitle: string): string {
+  const normalizedTitle = appTitle.toLowerCase();
+  
+  for (const [categoryName, categoryData] of Object.entries(appCategories.categories)) {
+    const found = categoryData.apps.some(app => 
+      normalizedTitle.includes(app.toLowerCase()) || 
+      app.toLowerCase().includes(normalizedTitle)
+    );
+    if (found) {
+      return categoryName;
+    }
+  }
+  return 'uncategorized';
+}
+
 async function checkIdleStatus() {
   log.info('checkIdleStatus called');
   try {
+    const currentWindow = memoryStore.get('currentWindow');
+    if (currentWindow && isEntertainmentApp(currentWindow.title)) {
+      log.info('Entertainment app detected, skipping idle detection for:', currentWindow.title);
+      await handleIdleStatusChange(false);
+      return;
+    }
+
     if (!getSystemIdleTime) {
       log.info('Using fallback idle detection');
       // Fallback: use time since last window change as idle indicator
@@ -449,8 +486,6 @@ export function compileWindowData(days?: number) {
   const dataPool = db.prepare(query).all(...params);
 
   log.info('Data pool:', dataPool.length);
-  
-  // Function to find category for an app
   function findAppCategory(appTitle: string): string {
     const normalizedTitle = appTitle.toLowerCase();
     
@@ -632,12 +667,18 @@ export function getIdleStatistics(days?: number) {
 
 export function getCurrentIdleStatus() {
   log.info('getCurrentIdleStatus called');
+  const currentWindow = memoryStore.get('currentWindow');
+  const isEntertainment = currentWindow ? isEntertainmentApp(currentWindow.title) : false;
+  
   return {
     isIdle: isCurrentlyIdle,
     idleStartTime: idleStartTime,
     idleDuration: idleStartTime ? Date.now() - idleStartTime : 0,
     lastActiveTime: lastActiveTime,
-    idleThreshold: IDLE_THRESHOLD
+    idleThreshold: IDLE_THRESHOLD,
+    currentWindow: currentWindow ? currentWindow.title : null,
+    isEntertainmentApp: isEntertainment,
+    idleDetectionSkipped: isEntertainment
   };
 }
 
