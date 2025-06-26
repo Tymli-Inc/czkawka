@@ -1,48 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { CompileDataResponse, ActiveWindow, WindowHistoryEntry } from '../types/windowTracking';
-
-interface ActiveWindowData {
-  // Define the structure of windowData as needed, for example:
-  // title: string;
-  // id: number;
-  [key: string]: any;
-}
-
-interface UserData {
-  id: string;
-  email: string;
-  name: string;
-  picture?: string;
-  [key: string]: any;
-}
-
-interface ElectronAPI {
-  getActiveWindow: () => Promise<ActiveWindow | null>;
-  saveActiveWindow: (data: { title: string; unique_id: number; error?: string }) => Promise<{ success: boolean }>;
-  getActiveWindows: () => Promise<WindowHistoryEntry[]>;
-  compileData: (days?: number) => Promise<CompileDataResponse>;
-  login: () => Promise<void>;
-  onAuthSuccess: (callback: (userData: any) => void) => void;
-  onAuthFailure: (callback: () => void) => void;
-  onAuthLogout: (callback: () => void) => void;
-  removeAuthListener: () => void;      storeUserToken: (userData: any) => Promise<{ success: boolean; error?: string }>;
-  getUserToken: () => Promise<{ userData: any | null; isLoggedIn: boolean }>;
-  getUserData: () => Promise<{ userData: any | null; success: boolean; error?: string }>;
-  clearUserToken: () => Promise<{ success: boolean; error?: string }>;
-  getLoginStatus: () => Promise<{ isLoggedIn: boolean }>;
-  windowMinimize: () => Promise<void>;
-  windowMaximize: () => Promise<void>;
-  windowClose: () => Promise<void>;
-  windowIsMaximized: () => Promise<boolean>;
-  onWindowMaximized: (callback: (isMaximized: boolean) => void) => void;
-  removeWindowListener: () => void;
-  getTrackingTimes: (days?: number) => Promise<{ success: boolean; data: any[]; error?: string }>;
-  // Idle detection APIs
-  getIdleEvents: (days?: number) => Promise<{ success: boolean; data: any[]; error?: string }>;
-  getIdleStatistics: (days?: number) => Promise<{ success: boolean; data: any; error?: string }>;
-  getCurrentIdleStatus: () => Promise<{ isIdle: boolean; idleStartTime: number | null; idleDuration: number; lastActiveTime: number; idleThreshold: number; error?: string }>;
-  setIdleThreshold: (thresholdMs: number) => Promise<{ success: boolean; message?: string; oldThreshold?: number; newThreshold?: number; error?: string }>;
-};
+import type { 
+  ElectronAPI, 
+  UserData,
+  ActiveWindow, 
+  WindowHistoryEntry, 
+  CompileDataResponse 
+} from '../types/electronAPI';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getActiveWindow: async (): Promise<any> => {
@@ -58,7 +21,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   compileData: async (days?: number) => {
     return await ipcRenderer.invoke('compile-data', days);
   },
-
+  getGroupedCategories: async (days?: number) => {
+    return await ipcRenderer.invoke('get-grouped-categories', days);
+  },
   login: async (): Promise<void> => {
     return await ipcRenderer.invoke('login');
   },

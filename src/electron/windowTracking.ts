@@ -4,7 +4,7 @@ import { app } from 'electron';
 import {db} from "./database";
 import {getLoginStatus} from "./auth";
 import {mainWindow} from "./main";
-import { appCategories } from './app-categories';
+import { appCategories, AppCategories } from './app-categories';
 
 // Add idle detection import
 let getSystemIdleTime: any;
@@ -698,6 +698,69 @@ export function setIdleThreshold(thresholdMs: number) {
     return {
       success: false,
       message: 'Invalid threshold value. Must be greater than 0.'
+    };
+  }
+}
+
+export function getGroupedCategories(days?: number) {
+  log.info('getGroupedCategories called');
+  try {
+    const apps = getActiveWindows();
+    function groupApps(apps: any[]) {
+      log.info('groupApps called with apps:', apps);
+      const grouped: {
+          categories: string[];
+          session_length: number;
+          session_start: number;
+          session_end: number;
+          appData: Array<{ title: string; session_length: number; category: string }>;
+        }[] = [];
+      let prevAppEndTime: number = 0;
+      apps.forEach(app => {
+        // Get the category of the app
+        const category = findAppCategory(app.title);
+        //check if this apps start time is after the previous app's end time, if so, create a new group
+        if (app.timestamp+2000 > prevAppEndTime) {
+          console.log('Creating new group for app:', app.title, 'with category:', category);
+          grouped.push({
+            categories: [category],
+            session_length: app.session_length,
+            session_start: app.timestamp,
+            session_end: app.timestamp + app.session_length,
+            appData: [{ title: app.title, session_length: app.session_length, category }]
+          });
+        } else {
+          // If the app is in the same group, add it to the existing group
+          const lastGroup = grouped[grouped.length - 1];
+          if (lastGroup) {
+            if (!lastGroup.categories.includes(category)) {
+              lastGroup.categories.push(category);
+            }
+            lastGroup.session_length += app.session_length;
+            lastGroup.session_end = Math.max(lastGroup.session_end, app.timestamp + app.session_length);
+            lastGroup.appData.push({ title: app.title, session_length: app.session_length, category });
+          }
+        }
+        // Update the previous app's end time
+        prevAppEndTime = app.timestamp + app.session_length;
+
+      });
+
+      return grouped;
+    }
+    const groupedCategories = groupApps(apps);
+
+    return {
+      success: true,
+      data: groupedCategories
+    };
+  } catch (error) {
+    log.error('Error getting grouped categories:', error);
+    return {
+      success: false,
+      error: typeof error === 'object' && error !== null && 'message' in error
+        ? (error as { message: string }).message
+        : String(error)
     };
   }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './timeline.css';
-import { CategoryData, CompileDataResponse, WindowRecord, TrackingSession } from '../../../types/windowTracking';
+import { CategoryData, CompileDataResponse, WindowRecord, TrackingSession } from '../../../types/electronAPI';
 
 interface TimelineBar {
   id: string;
@@ -17,16 +17,40 @@ interface TimeMarker {
   position: number;
 }
 
-const Timeline: React.FC = () => {
-  const [trackingSessions, setTrackingSessions] = useState<TrackingSession[]>([]);
-  const [windowRecords, setWindowRecords] = useState<WindowRecord[]>([]);
-  const [categorizedData, setCategorizedData] = useState<CategoryData[]>([]);
+interface TimelineProps {
+  selectedDate: Date;
+  trackingSessions: TrackingSession[];
+  windowRecords: WindowRecord[];
+  categorizedData: CategoryData[];
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => void;
+  onDateNavigate: (direction: 'prev' | 'next') => void;
+  timelineStats?: {
+    totalActiveTime: number;
+    sessionsCount: number;
+    applicationsCount: number;
+    categoriesCount: number;
+  };
+}
+
+const Timeline: React.FC<TimelineProps> = ({
+  selectedDate,
+  trackingSessions,
+  windowRecords,
+  categorizedData,
+  loading,
+  error,
+  onRefresh,
+  onDateNavigate,
+  timelineStats
+}) => {
+  // Keep only the Timeline-specific state
   const [sessionBars, setSessionBars] = useState<TimelineBar[]>([]);
   const [windowBars, setWindowBars] = useState<TimelineBar[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState({ start: 0, end: 0 });
-  const [selectedDate, setSelectedDate] = useState(new Date());  const [zoomLevel, setZoomLevel] = useState<'day' | '12h' | '6h' | '3h' | '1h'>('day');  const [zoomStartTime, setZoomStartTime] = useState<number | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<'day' | '12h' | '6h' | '3h' | '1h'>('day');
+  const [zoomStartTime, setZoomStartTime] = useState<number | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [legendStartIndex, setLegendStartIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<CategoryData | null>(null);
@@ -114,7 +138,7 @@ const Timeline: React.FC = () => {
   };
   // Fetch data on component mount
   useEffect(() => {
-    fetchTimelineData();
+    // Data is now handled by parent component
   }, []);
 
   // Update current time every minute
@@ -124,52 +148,16 @@ const Timeline: React.FC = () => {
     }, 60000); // Update every minute
 
     return () => clearInterval(interval);
-  }, []);  // Process data when either dataset changes
+  }, []);
+
+  // Process data when either dataset changes
   useEffect(() => {
     processTimelineData();
     // Reset legend pagination when data changes
     setLegendStartIndex(0);
-  }, [trackingSessions, windowRecords, categorizedData, selectedDate, zoomLevel, zoomStartTime]);  const fetchTimelineData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  }, [trackingSessions, windowRecords, categorizedData, selectedDate, zoomLevel, zoomStartTime]);
 
-      // Fetch tracking sessions for the past 1 day
-      const trackingResponse = await window.electronAPI.getTrackingTimes(1);
-      if (trackingResponse.success) {
-        setTrackingSessions(trackingResponse.data);
-      } else {
-        throw new Error(trackingResponse.error || 'Failed to fetch tracking times');
-      }
-
-      // Fetch categorized window data for the past 1 day
-      const categorizedResponse: CompileDataResponse = await window.electronAPI.compileData(1);
-      if (categorizedResponse.success) {
-        setCategorizedData(categorizedResponse.data);
-        console.log('Fetched categorized data:', categorizedResponse.data);
-        
-        // Log category summary for debugging
-        categorizedResponse.data.forEach(category => {
-          console.log(`Category: ${category.title}, Total Time: ${category.session_length}ms, Apps: ${category.appData.length}`);
-          category.appData.forEach(app => {
-            console.log(`  - ${app.title}: ${app.session_length}ms`);
-          });
-        });
-      }
-
-      // Fetch raw window data with timestamps for timeline visualization
-      const windowsResponse = await window.electronAPI.getActiveWindows();
-      const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-      const recentWindows = windowsResponse.filter(window => window.timestamp >= oneDayAgo);
-      setWindowRecords(recentWindows);
-      console.log('Fetched raw window data for timeline:', recentWindows);
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
-    } finally {
-      setLoading(false);
-    }
-  };const processTimelineData = () => {
+  const processTimelineData = () => {
     // Calculate time range based on zoom level
     let startTime: number;
     let endTime: number;
@@ -231,6 +219,7 @@ const Timeline: React.FC = () => {
         const windowEndTime = window.timestamp + (window.session_length || 0);
         return {
           id: `window-${window.id}`,
+
           startTime: Math.max(window.timestamp, startTime),
           endTime: Math.min(windowEndTime, endTime),
           type: 'window' as const,
@@ -420,15 +409,6 @@ const Timeline: React.FC = () => {
     return zoomDuration[zoomLevel];
   };
 
-  const navigateDate = (direction: 'prev' | 'next') => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
-    setSelectedDate(newDate);
-    // Reset zoom when changing dates
-    setZoomLevel('day');
-    setZoomStartTime(null);
-  };
-
   const handleZoomChange = (newZoomLevel: typeof zoomLevel) => {
     if (newZoomLevel === 'day') {
       setZoomLevel('day');
@@ -547,7 +527,7 @@ const Timeline: React.FC = () => {
         </div>
         <div className="timeline-error">
           <p>Error: {error}</p>
-          <button onClick={fetchTimelineData} className="retry-button">
+          <button onClick={onRefresh} className="retry-button">
             Retry
           </button>
         </div>
@@ -555,45 +535,9 @@ const Timeline: React.FC = () => {
     );
   }  const timeMarkers = generateTimeMarkers();
   
-  // Calculate combined active time - now just sum the session bars since they already represent merged intervals
-  const totalCombinedActiveTime = sessionBars.reduce((total, bar) => total + (bar.endTime - bar.startTime), 0);
-  const totalSessionTime = sessionBars.reduce((total, bar) => total + (bar.endTime - bar.startTime), 0);
-  const totalWindowTime = windowBars.reduce((total, bar) => total + (bar.endTime - bar.startTime), 0);
-  const uniqueApplications = Array.from(new Set(windowBars.map(bar => bar.title))).length;
-
   return (
-    <div className="timeline-container">      <div className="timeline-header">
-        <div className="date-navigation">
-          <button onClick={() => navigateDate('prev')} className="nav-button">
-            ←
-          </button>
-          <h2>{formatDate(selectedDate)}</h2>
-              {selectedDate.toDateString() !== new Date().toDateString() && (
-              <button onClick={() => navigateDate('next')} className="nav-button">
-                →
-              </button>
-              )}
-        </div>        <div className="timeline-stats">
-          <div className="stat">
-            <span className="stat-label">Active Time:</span>
-            <span className="stat-value">{formatDuration(totalCombinedActiveTime)}</span>
-          </div>
-          <div className="stat">
-            <span className="stat-label">Sessions:</span>
-            <span className="stat-value">{sessionBars.length}</span>
-          </div>
-          <div className="stat">
-            <span className="stat-label">Applications:</span>
-            <span className="stat-value">{uniqueApplications}</span>
-          </div>
-          {categorizedData.length > 0 && (
-            <div className="stat">
-              <span className="stat-label">Categories:</span>
-              <span className="stat-value">{categorizedData.length}</span>
-            </div>
-          )}
-        </div>
-      </div><div className="timeline-content">        <div className="timeline-header-label">
+    <div className="timeline-container">
+      <div className="timeline-content">        <div className="timeline-header-label">
           <span>TIMELINE</span>
           <div className="timeline-header-controls">
             {/* Zoom Controls */}
@@ -651,7 +595,7 @@ const Timeline: React.FC = () => {
               </div>
 
             </div>
-            <button onClick={fetchTimelineData} className="refresh-button" title="Refresh timeline data">
+            <button onClick={onRefresh} className="refresh-button" title="Refresh timeline data">
               <span>↻</span>
             </button>
           </div>

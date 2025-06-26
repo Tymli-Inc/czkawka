@@ -2,7 +2,7 @@ import squirrelStartup from 'electron-squirrel-startup';
 import AutoLaunch from 'electron-auto-launch';
 import { app as appBase, BrowserWindow, Tray, shell } from 'electron';
 import { initializeDatabase } from './database';
-import { initializeWindowTracking } from './windowTracking';
+import { getGroupedCategories, initializeWindowTracking } from './windowTracking';
 import { setupProtocolHandling, setupDeepLinkHandlers } from './auth';
 import { ensureSingleInstance, getTrayIconPath } from './utils';
 import { createMainWindow } from './windowManager';
@@ -85,6 +85,7 @@ app.whenReady().then(() => {
         initializeWindowTracking();
         setupIpcHandlers();
         setupDeepLinkHandlers(mainWindow);
+        getGroupedCategories();
     } catch (error) {
         log.error('Error during app initialization:', error);
     }    app.on('activate', () => {

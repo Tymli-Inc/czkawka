@@ -8,35 +8,11 @@ import SettingsPage from './pages/SettingsPage';
 import AboutPage from './pages/AboutPage';
 import ScreentimePage from './pages/ScreentimePage';
 import CategoriesPage from './pages/CategoriesPage';
-import type { CompileDataResponse, ActiveWindow, WindowHistoryEntry } from '../types/windowTracking';
+import type { ElectronAPI } from '../types/electronAPI';
 
 declare global {
   interface Window {
-    electronAPI: {
-      getActiveWindow: () => Promise<ActiveWindow | null>;
-      saveActiveWindow: (data: { title: string; unique_id: number; error?: string }) => Promise<{ success: boolean }>;
-      getActiveWindows: () => Promise<WindowHistoryEntry[]>;
-      compileData: (days?: number) => Promise<CompileDataResponse>;
-      login: () => Promise<void>;
-      onAuthSuccess: (callback: (userData: any) => void) => void;
-      onAuthFailure: (callback: () => void) => void;
-      onAuthLogout: (callback: () => void) => void;
-      removeAuthListener: () => void;      storeUserToken: (userData: any) => Promise<{ success: boolean; error?: string }>;
-      getUserToken: () => Promise<{ userData: any | null; isLoggedIn: boolean }>;
-      getUserData: () => Promise<{ userData: any | null; success: boolean; error?: string }>;
-      clearUserToken: () => Promise<{ success: boolean; error?: string }>;
-      getLoginStatus: () => Promise<{ isLoggedIn: boolean }>;
-      // Window control APIs
-      windowMinimize: () => Promise<void>;
-      windowMaximize: () => Promise<void>;
-      windowClose: () => Promise<void>;
-      windowIsMaximized: () => Promise<boolean>;
-      onWindowMaximized: (callback: (isMaximized: boolean) => void) => void;
-      removeWindowListener: () => void;
-      getTrackingTimes: (days?: number) => Promise<{ success: boolean; data: any[]; error?: string }>;
-      getCurrentIdleStatus: () => Promise<{ isIdle: boolean; idleStartTime: number | null; idleDuration: number; lastActiveTime: number; idleThreshold: number; error?: string }>;
-      getIdleStatistics: (days?: number) => Promise<{ success: boolean; data: any; error?: string }>;
-    };
+    electronAPI: ElectronAPI;
   }
 }
 

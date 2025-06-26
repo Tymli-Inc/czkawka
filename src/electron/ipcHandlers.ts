@@ -1,7 +1,8 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import { getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes, getIdleEvents, getIdleStatistics, getCurrentIdleStatus, setIdleThreshold } from './windowTracking';
+import { getGroupedCategories, getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes, getIdleEvents, getIdleStatistics, getCurrentIdleStatus, setIdleThreshold } from './windowTracking';
 import {clearUserToken, getLoginStatus, getUserToken, handleLogin, storeUserToken, getUserData} from './auth';
 import log from 'electron-log';
+import type { UserData } from '../types/electronAPI';
 
 export function setupIpcHandlers() {
   ipcMain.handle('get-active-windows', () => {
@@ -104,7 +105,7 @@ export function setupIpcHandlers() {
     handleLogin();
   });
 
-  ipcMain.handle('store-user-token', (event, userData: any) => {
+  ipcMain.handle('store-user-token', (event, userData: UserData) => {
     return storeUserToken(userData);
   });
 
@@ -112,9 +113,25 @@ export function setupIpcHandlers() {
     return getUserToken()
   });
 
+  ipcMain.handle('get-grouped-categories', (event, days?: number) => {
+    try {
+      return getGroupedCategories(days);
+    } catch (error) {
+      log.error('Error getting grouped categories:', error);
+      return {
+        success: false,
+        error: typeof error === 'object' && error !== null && 'message' in error
+          ? (error as { message: string }).message
+          : String(error),
+        data: []
+      };
+    }
+  });
+
   ipcMain.handle('clear-user-token', () => {
     return clearUserToken()
   });
+  
   ipcMain.handle('get-login-status', () => {
     return getLoginStatus()
   });

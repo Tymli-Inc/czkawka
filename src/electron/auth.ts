@@ -6,6 +6,7 @@ import Store from 'electron-store';
 import log from "electron-log";
 import {startActiveWindowTracking, stopActiveWindowTracking} from "./windowTracking";
 import { initializeDatabase } from './database';
+import type { UserData } from '../types/electronAPI';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -150,7 +151,7 @@ export function getDeeplinkUrl() {
   return deeplinkUrl;
 }
 
-export async function storeUserToken(userData: any) {
+export async function storeUserToken(userData: UserData) {
   log.info('storeUserToken called with userData token:', userData.token);
   try {
     initializeStore();

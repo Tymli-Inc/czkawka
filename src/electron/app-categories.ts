@@ -5,13 +5,7 @@ export interface AppCategory {
 
 export interface AppCategories {
   categories: {
-    development: AppCategory;
-    social: AppCategory;
-    entertainment: AppCategory;
-    productivity: AppCategory;
-    browsers: AppCategory;
-    system: AppCategory;
-    utilities: AppCategory;
+    [key: string]: AppCategory;
   };
 }
 
