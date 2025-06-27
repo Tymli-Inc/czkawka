@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron';
 import { getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes, getIdleEvents, getIdleStatistics, getCurrentIdleStatus, setIdleThreshold } from './windowTracking';
 import {clearUserToken, getLoginStatus, getUserToken, handleLogin, storeUserToken, getUserData} from './auth';
+import { checkForUpdates, quitAndInstall } from './autoUpdate';
 import log from 'electron-log';
 
 export function setupIpcHandlers() {
@@ -151,5 +152,18 @@ export function setupIpcHandlers() {
   ipcMain.handle('window-is-maximized', () => {
     const window = BrowserWindow.getFocusedWindow();
     return window ? window.isMaximized() : false;
+  });
+
+  // Auto-update handlers
+  ipcMain.handle('check-for-updates', () => {
+    log.info('Manual update check requested from renderer');
+    checkForUpdates();
+    return { success: true, message: 'Update check initiated' };
+  });
+
+  ipcMain.handle('install-update', () => {
+    log.info('Manual update install requested from renderer');
+    quitAndInstall();
+    return { success: true, message: 'Update installation initiated' };
   });
 }

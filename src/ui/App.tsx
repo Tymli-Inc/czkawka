@@ -36,6 +36,11 @@ declare global {
       getTrackingTimes: (days?: number) => Promise<{ success: boolean; data: any[]; error?: string }>;
       getCurrentIdleStatus: () => Promise<{ isIdle: boolean; idleStartTime: number | null; idleDuration: number; lastActiveTime: number; idleThreshold: number; error?: string }>;
       getIdleStatistics: (days?: number) => Promise<{ success: boolean; data: any; error?: string }>;
+      // Auto-update APIs
+      checkForUpdates: () => Promise<{ success: boolean; message: string }>;
+      installUpdate: () => Promise<{ success: boolean; message: string }>;
+      onUpdateStatus: (callback: (status: any) => void) => void;
+      removeUpdateListener: () => void;
     };
   }
 }

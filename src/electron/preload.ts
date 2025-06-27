@@ -18,7 +18,6 @@ interface UserData {
 
 interface ElectronAPI {
   getActiveWindow: () => Promise<ActiveWindow | null>;
-  saveActiveWindow: (data: { title: string; unique_id: number; error?: string }) => Promise<{ success: boolean }>;
   getActiveWindows: () => Promise<WindowHistoryEntry[]>;
   compileData: (days?: number) => Promise<CompileDataResponse>;
   login: () => Promise<void>;
@@ -42,6 +41,11 @@ interface ElectronAPI {
   getIdleStatistics: (days?: number) => Promise<{ success: boolean; data: any; error?: string }>;
   getCurrentIdleStatus: () => Promise<{ isIdle: boolean; idleStartTime: number | null; idleDuration: number; lastActiveTime: number; idleThreshold: number; error?: string }>;
   setIdleThreshold: (thresholdMs: number) => Promise<{ success: boolean; message?: string; oldThreshold?: number; newThreshold?: number; error?: string }>;
+  // Auto-update APIs
+  checkForUpdates: () => Promise<{ success: boolean; message: string }>;
+  installUpdate: () => Promise<{ success: boolean; message: string }>;
+  onUpdateStatus: (callback: (status: any) => void) => void;
+  removeUpdateListener: () => void;
 };
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -137,5 +141,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   setIdleThreshold: async (thresholdMs: number) => {
     return await ipcRenderer.invoke('set-idle-threshold', thresholdMs);
-  }
+  },
+
+  // Auto-update APIs
+  checkForUpdates: async () => {
+    return await ipcRenderer.invoke('check-for-updates');
+  },
+
+  installUpdate: async () => {
+    return await ipcRenderer.invoke('install-update');
+  },
+
+  onUpdateStatus: (callback: (status: any) => void) => {
+    ipcRenderer.on('update-status', (_, status) => callback(status));
+  },
+
+  removeUpdateListener: () => {
+    ipcRenderer.removeAllListeners('update-status');
+    ipcRenderer.removeAllListeners('update-downloaded');
+  },
+
+  onUpdateDownloaded: (callback: () => void) => {
+    ipcRenderer.on('update-downloaded', () => callback());
+  },
 } as ElectronAPI);

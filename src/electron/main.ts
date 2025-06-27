@@ -9,6 +9,7 @@ import { createMainWindow } from './windowManager';
 import { setupIpcHandlers } from './ipcHandlers';
 import log from 'electron-log';
 import path from 'path';
+import { setupAutoUpdate, cleanupAutoUpdater } from './autoUpdate';
 
 import './auth';
 
@@ -85,6 +86,8 @@ app.whenReady().then(() => {
         initializeWindowTracking();
         setupIpcHandlers();
         setupDeepLinkHandlers(mainWindow);
+        // Start auto-update check
+        setupAutoUpdate(mainWindow);
     } catch (error) {
         log.error('Error during app initialization:', error);
     }    app.on('activate', () => {
@@ -100,7 +103,14 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
     log.info('All windows closed event');
     if (process.platform !== 'darwin') {
+        cleanupAutoUpdater();
         app.quit();
         log.info('Application quitting');
     }
+});
+
+app.on('before-quit', () => {
+    log.info('App before-quit event');
+    app.isQuiting = true;
+    cleanupAutoUpdater();
 });

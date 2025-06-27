@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { MdSettings } from 'react-icons/md';
+import UpdateStatus from '../components/UpdateStatus';
 
 const SettingsPage = () => {
   const [user, setUser] = useState<any>(null);
@@ -228,6 +229,8 @@ const SettingsPage = () => {
           Save Settings
         </button>
       </div>
+
+      <UpdateStatus />
     </div>
   );
 };
