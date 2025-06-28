@@ -19,7 +19,7 @@ export function setupAutoUpdate(mainWindow: BrowserWindow | null) {
   // Configure auto-updater for Vercel-hosted latest.yml (points to hourglass-latest-build releases)
   autoUpdater.setFeedURL({
     provider: 'generic',
-    url: 'https://hourglass-distribution.vercel.app/latest.yml'
+    url: 'https://hourglass-distribution.vercel.app'
   });
 
   // Configure auto-updater settings
