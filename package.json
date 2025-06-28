@@ -76,7 +76,7 @@
     "publish": [
       {
         "provider": "generic",
-        "url": "https://delbbj6dg6b8e.cloudfront.net"
+        "url": "https://hourglass-distribution.vercel.app"
       }
     ],
     "win": {

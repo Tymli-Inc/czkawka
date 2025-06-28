@@ -12,11 +12,14 @@ interface UpdateProgress {
 let isUpdateInProgress = false;
 let updateCheckInterval: NodeJS.Timeout | null = null;
 
+// Development mode flag - set to true to test auto-updates in development
+const ENABLE_DEV_UPDATES = false; // Change to true to test updates in development
+
 export function setupAutoUpdate(mainWindow: BrowserWindow | null) {
-  // Configure auto-updater
+  // Configure auto-updater for Vercel-hosted latest.yml (points to hourglass-latest-build releases)
   autoUpdater.setFeedURL({
     provider: 'generic',
-    url: 'https://delbbj6dg6b8e.cloudfront.net/'
+    url: 'https://hourglass-distribution.vercel.app/latest.yml'
   });
 
   // Configure auto-updater settings
@@ -25,6 +28,15 @@ export function setupAutoUpdate(mainWindow: BrowserWindow | null) {
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.allowDowngrade = false;
   autoUpdater.allowPrerelease = false;
+
+  // Enable development mode testing if flag is set
+  if (ENABLE_DEV_UPDATES) {
+    log.info('Auto-updater enabled for development testing');
+    // This allows testing auto-updates in development mode
+    Object.defineProperty(autoUpdater, 'isUpdaterActive', {
+      get: () => true,
+    });
+  }
 
   // Set up event handlers
   autoUpdater.on('checking-for-update', () => {
@@ -131,14 +143,21 @@ export function setupAutoUpdate(mainWindow: BrowserWindow | null) {
     }
   });
 
-  // Check for updates immediately on startup
+  // Check for updates immediately on startup with UI feedback
   setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-status', {
+        type: 'checking',
+        message: 'Checking for updates on startup...'
+      });
+    }
     checkForUpdates();
-  }, 3000); // Wait 3 seconds after app startup like Discord
+  }, 2000); // Wait 2 seconds after app startup for better UX
 
   // Check for updates periodically (every 4 hours like Discord)
   updateCheckInterval = setInterval(() => {
     if (!isUpdateInProgress) {
+      log.info('Periodic update check triggered');
       checkForUpdates();
     }
   }, 4 * 60 * 60 * 1000); // 4 hours
