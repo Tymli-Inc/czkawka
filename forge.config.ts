@@ -20,7 +20,7 @@ const config: ForgeConfig = {  packagerConfig: {
     ],    
     executableName: "Hourglass",
     icon: "./assets/icons/hourglass",
-    extraResource: ['assets'],
+    extraResource: ['assets', 'app-update.yml'],
     // Better app info for searchability
     appBundleId: 'com.hourglass.timetracker',
     appCategoryType: 'public.app-category.productivity',    win32metadata: {
