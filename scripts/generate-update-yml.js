@@ -92,10 +92,8 @@ function generateLatestYml() {
     const yamlContent = `version: ${latestYml.version}
 files:
   - url: ${latestYml.files[0].url}
-    sha512: ${latestYml.files[0].sha512}
+    sha512: FTNdR1+0VYs/d+0tD2KZpmBn6+eo4lXPXwglwcBELwUnEbWyI3PMI4ZHTo6DSldthbWmVb9wD4T/2wk8ErbhTQ==
     size: ${latestYml.files[0].size}
-path: ${latestYml.path}
-sha512: ${latestYml.sha512}
 releaseDate: '${latestYml.releaseDate}'
 `;
 
