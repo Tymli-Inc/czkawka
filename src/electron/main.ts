@@ -2,13 +2,14 @@ import squirrelStartup from 'electron-squirrel-startup';
 import AutoLaunch from 'electron-auto-launch';
 import { app as appBase, BrowserWindow, Tray, shell } from 'electron';
 import { initializeDatabase } from './database';
-import { getGroupedCategories, initializeWindowTracking } from './windowTracking';
+import { initializeWindowTracking } from './windowTracking';
 import { setupProtocolHandling, setupDeepLinkHandlers } from './auth';
 import { ensureSingleInstance, getTrayIconPath } from './utils';
 import { createMainWindow } from './windowManager';
 import { setupIpcHandlers } from './ipcHandlers';
 import log from 'electron-log';
 import path from 'path';
+import { setupAutoUpdate, cleanupAutoUpdater } from './autoUpdate';
 
 import './auth';
 
@@ -85,7 +86,8 @@ app.whenReady().then(() => {
         initializeWindowTracking();
         setupIpcHandlers();
         setupDeepLinkHandlers(mainWindow);
-        getGroupedCategories();
+        // Start auto-update check
+        setupAutoUpdate(mainWindow);
     } catch (error) {
         log.error('Error during app initialization:', error);
     }    app.on('activate', () => {
@@ -104,4 +106,10 @@ app.on('window-all-closed', () => {
         app.quit();
         log.info('Application quitting');
     }
+});
+
+app.on('before-quit', () => {
+    log.info('App before-quit event');
+    app.isQuiting = true;
+    cleanupAutoUpdater();
 });
