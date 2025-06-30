@@ -1,7 +1,7 @@
 {
   "name": "hourglass",
   "productName": "Hourglass",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Hourglass Time Tracking Application",
   "main": ".vite/build/main.js",
   "scripts": {
@@ -12,7 +12,8 @@
     "lint": "eslint --ext .ts,.tsx .",
     "rebuild": "electron-rebuild",
     "postinstall": "electron-rebuild",
-    "install:clean": "rm -rf node_modules package-lock.json && npm install"
+    "install:clean": "rm -rf node_modules package-lock.json && npm install",
+    "generate-update-yml": "node scripts/generate-update-yml.js"
   },
   "keywords": [],
   "author": {
@@ -68,5 +69,27 @@
     "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
     "react-router-dom": "^6.30.1"
+  },
+  "build": {
+    "appId": "com.hourglass.desktop",
+    "productName": "Hourglass",
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://hourglass-distribution.vercel.app"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "publisherName": "Hourglass Team",
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "directories": {
+      "output": "dist"
+    }
   }
 }

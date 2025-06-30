@@ -8,7 +8,7 @@ import SettingsPage from './pages/SettingsPage';
 import AboutPage from './pages/AboutPage';
 import ScreentimePage from './pages/ScreentimePage';
 import CategoriesPage from './pages/CategoriesPage';
-import type { ElectronAPI } from '../types/electronAPI';
+import type { CompileDataResponse, ActiveWindow, WindowHistoryEntry } from '../types/windowTracking';
 
 declare global {
   interface Window {
