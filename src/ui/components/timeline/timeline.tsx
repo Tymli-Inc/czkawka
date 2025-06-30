@@ -55,6 +55,8 @@ const Timeline: React.FC<TimelineProps> = ({
   const [legendStartIndex, setLegendStartIndex] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<CategoryData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState<'thumb' | 'left' | 'right' | null>(null);
+  const [dragStart, setDragStart] = useState({ x: 0, initialValue: 0 });
   // Generate colors for different windows - enhanced palette with more unique colors
   const windowColors = [
     '#FF6B6B', 
@@ -479,6 +481,159 @@ const Timeline: React.FC<TimelineProps> = ({
       Math.min(newStartTime, dayEnd.getTime() - duration)
     );
       setZoomStartTime(clampedStartTime);
+  };
+
+  const handleScrollbarClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (isDragging) return;
+    
+    const scrollbar = event.currentTarget;
+    const rect = scrollbar.getBoundingClientRect();
+    const scrollbarWidth = rect.width - 40; // Account for resize handles
+    const clickX = event.clientX - rect.left - 20; // Account for left resize handle
+    
+    const dayStart = new Date(selectedDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(selectedDate);
+    dayEnd.setHours(23, 59, 59, 999);
+    const dayDuration = dayEnd.getTime() - dayStart.getTime();
+    
+    if (zoomLevel === 'day') return;
+    
+    const currentDuration = getZoomDuration();
+    const clickPosition = Math.max(0, Math.min(clickX / scrollbarWidth, 1));
+    const newStartTime = dayStart.getTime() + (clickPosition * (dayDuration - currentDuration));
+    
+    setZoomStartTime(newStartTime + currentDuration);
+  };
+
+  const handleDragStart = (type: 'thumb' | 'left' | 'right', event: React.MouseEvent) => {
+    event.stopPropagation();
+    setIsDragging(type);
+    setDragStart({ 
+      x: event.clientX, 
+      initialValue: type === 'thumb' ? (zoomStartTime || 0) : getZoomDuration()
+    });
+  };
+
+  const handleDragMove = (event: MouseEvent) => {
+    if (!isDragging) return;
+    
+    const dayStart = new Date(selectedDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(selectedDate);
+    dayEnd.setHours(23, 59, 59, 999);
+    const dayDuration = dayEnd.getTime() - dayStart.getTime();
+    
+    const deltaX = event.clientX - dragStart.x;
+    const scrollbarElement = document.querySelector('.timeline-scrollbar');
+    if (!scrollbarElement) return;
+    
+    const scrollbarWidth = scrollbarElement.getBoundingClientRect().width - 40;
+    const deltaTime = (deltaX / scrollbarWidth) * dayDuration;
+    
+    if (isDragging === 'thumb') {
+      // Dragging the thumb - move the view
+      const currentDuration = getZoomDuration();
+      const newEndTime = Math.max(
+        dayStart.getTime() + currentDuration,
+        Math.min(
+          dayEnd.getTime(),
+          dragStart.initialValue + deltaTime
+        )
+      );
+      setZoomStartTime(newEndTime);
+    } else if (isDragging === 'left') {
+      // Dragging left handle - zoom in/out
+      const zoomLevels: Array<typeof zoomLevel> = ['1h', '3h', '6h', '12h', 'day'];
+      const currentIndex = zoomLevels.indexOf(zoomLevel);
+      const sensitivity = 50; // pixels needed to change zoom level
+      
+      if (deltaX < -sensitivity && currentIndex > 0) {
+        handleZoomChange(zoomLevels[currentIndex - 1]);
+        setDragStart({ x: event.clientX, initialValue: getZoomDuration() });
+      } else if (deltaX > sensitivity && currentIndex < zoomLevels.length - 1) {
+        handleZoomChange(zoomLevels[currentIndex + 1]);
+        setDragStart({ x: event.clientX, initialValue: getZoomDuration() });
+      }
+    } else if (isDragging === 'right') {
+      // Dragging right handle - zoom in/out
+      const zoomLevels: Array<typeof zoomLevel> = ['1h', '3h', '6h', '12h', 'day'];
+      const currentIndex = zoomLevels.indexOf(zoomLevel);
+      const sensitivity = 50;
+      
+      if (deltaX > sensitivity && currentIndex > 0) {
+        handleZoomChange(zoomLevels[currentIndex - 1]);
+        setDragStart({ x: event.clientX, initialValue: getZoomDuration() });
+      } else if (deltaX < -sensitivity && currentIndex < zoomLevels.length - 1) {
+        handleZoomChange(zoomLevels[currentIndex + 1]);
+        setDragStart({ x: event.clientX, initialValue: getZoomDuration() });
+      }
+    }
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(null);
+  };
+
+  // Add event listeners for drag operations
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleDragMove);
+      document.addEventListener('mouseup', handleDragEnd);
+      return () => {
+        document.removeEventListener('mousemove', handleDragMove);
+        document.removeEventListener('mouseup', handleDragEnd);
+      };
+    }
+  }, [isDragging, dragStart]);
+
+  const getScrollbarPosition = () => {
+    if (zoomLevel === 'day') {
+      return { left: 0, width: 100 };
+    }
+    
+    const dayStart = new Date(selectedDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(selectedDate);
+    dayEnd.setHours(23, 59, 59, 999);
+    const dayDuration = dayEnd.getTime() - dayStart.getTime();
+    
+    const currentDuration = getZoomDuration();
+    const viewStart = (zoomStartTime || dayStart.getTime()) - currentDuration;
+    const viewEnd = zoomStartTime || dayEnd.getTime();
+    
+    const left = Math.max(0, ((viewStart - dayStart.getTime()) / dayDuration) * 100);
+    const width = Math.min(100 - left, (currentDuration / dayDuration) * 100);
+    
+    return { left, width };
+  };
+
+  const getMinimapBars = () => {
+    const dayStart = new Date(selectedDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(selectedDate);
+    dayEnd.setHours(23, 59, 59, 999);
+    const dayDuration = dayEnd.getTime() - dayStart.getTime();
+    
+    // Use all window records for the full day, not just the filtered ones
+    return windowRecords
+      .filter(window => {
+        const windowEndTime = window.timestamp + (window.session_length || 0);
+        return window.timestamp < dayEnd.getTime() && windowEndTime > dayStart.getTime();
+      })
+      .map(window => {
+        const windowEndTime = window.timestamp + (window.session_length || 0);
+        const startTime = Math.max(window.timestamp, dayStart.getTime());
+        const endTime = Math.min(windowEndTime, dayEnd.getTime());
+        
+        const left = ((startTime - dayStart.getTime()) / dayDuration) * 100;
+        const width = ((endTime - startTime) / dayDuration) * 100;
+        return { 
+          left, 
+          width, 
+          color: getWindowColor(window.title)
+        };
+      });
   };  const navigateLegend = (direction: 'prev' | 'next') => {
     const uniqueApps = Array.from(new Set(windowBars.map(bar => bar.title)));
     const maxItemsVisible = 8; // 2 rows × 4 items per row
@@ -536,31 +691,12 @@ const Timeline: React.FC<TimelineProps> = ({
   }  const timeMarkers = generateTimeMarkers();
   
   return (
-    <div className="timeline-container">
+    <div className="timeline-container" data-zoom={zoomLevel}>
       <div className="timeline-content">        <div className="timeline-header-label">
           <span>TIMELINE</span>
           <div className="timeline-header-controls">
             {/* Zoom Controls */}
             <div className="zoom-controls">
-            {zoomLevel !== 'day' && (
-              <div className="zoom-navigation">
-                <button onClick={() => navigateZoom('prev')} className="zoom-nav-button">
-                  ‹
-                </button>
-                <button onClick={() => navigateZoom('next')} className="zoom-nav-button">
-                  ›
-                </button>
-              </div>
-            )}
-              
-            {zoomLevel !== 'day' && zoomStartTime && (
-              <div className="zoom-indicator">
-                <div className="zoom-indicator-icon">🔍</div>
-                <span>
-                  {formatTime(zoomStartTime - getZoomDuration())} -{formatTime(zoomStartTime)}
-                </span>
-              </div>
-            )}
               <div className="zoom-buttons">
                 <button 
                   onClick={() => handleZoomChange('day')} 
@@ -593,7 +729,6 @@ const Timeline: React.FC<TimelineProps> = ({
                   1h
                 </button>
               </div>
-
             </div>
             <button onClick={onRefresh} className="refresh-button" title="Refresh timeline data">
               <span>↻</span>
@@ -709,7 +844,64 @@ const Timeline: React.FC<TimelineProps> = ({
               </div>
             </div>
           </div>
-        )}        {sessionBars.length === 0 && windowBars.length === 0 && (
+        )}
+
+        {/* Timeline Navigation Scrollbar */}
+        <div className="timeline-scrollbar-container">
+          <div className="timeline-scrollbar" onClick={handleScrollbarClick}>
+            {/* Minimap background showing full day activity */}
+            <div className="scrollbar-minimap">
+              {getMinimapBars().map((bar, index) => (
+                <div
+                  key={index}
+                  className="minimap-bar"
+                  style={{
+                    left: `${bar.left}%`,
+                    width: `${bar.width}%`,
+                    backgroundColor: bar.color,
+                    opacity: 0.3
+                  }}
+                />
+              ))}
+            </div>
+            
+            {/* Resize handle - left (zoom in) */}
+            <div 
+              className="scrollbar-resize-handle left"
+              onMouseDown={(e) => handleDragStart('left', e)}
+              title="Drag to zoom in/out"
+            >
+            </div>
+            
+            {/* Current view indicator */}
+            <div 
+              className="scrollbar-thumb"
+              style={{
+                left: `${getScrollbarPosition().left}%`,
+                width: `${getScrollbarPosition().width}%`
+              }}
+              onMouseDown={(e) => handleDragStart('thumb', e)}
+            >
+              {zoomLevel !== 'day' && zoomStartTime && (
+                <div className="scrollbar-time-indicator">
+                  <span>
+                    {formatTime((zoomStartTime || 0) - getZoomDuration())} - {formatTime(zoomStartTime || 0)}
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            {/* Resize handle - right (zoom out) */}
+            <div 
+              className="scrollbar-resize-handle right"
+              onMouseDown={(e) => handleDragStart('right', e)}
+              title="Drag to zoom in/out"
+            >
+            </div>
+          </div>
+        </div>
+
+        {sessionBars.length === 0 && windowBars.length === 0 && (
           <div className="timeline-empty">
             <p>No activity recorded for {formatDate(selectedDate)}</p>
           </div>

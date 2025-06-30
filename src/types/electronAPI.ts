@@ -5,7 +5,8 @@ import type {
   AppData,
   CategoryData,
   WindowRecord,
-  TrackingSession
+  TrackingSession,
+  GroupedCategoryData
 } from './windowTracking';
 
 // Re-export types from windowTracking for convenience  
@@ -97,7 +98,7 @@ export interface ElectronAPI {
   
   // Data retrieval APIs
   getTrackingTimes: (days?: number) => Promise<DataResponse<any[]>>;
-  getGroupedCategories: (days?: number) => Promise<DataResponse<any[]>>;
+  getGroupedCategories: (days?: number) => Promise<DataResponse<GroupedCategoryData[]>>;
   getIdleEvents: (days?: number) => Promise<DataResponse<any[]>>;
   getIdleStatistics: (days?: number) => Promise<DataResponse<any>>;
   getCurrentIdleStatus: () => Promise<IdleStatusResponse>;

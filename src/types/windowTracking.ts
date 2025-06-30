@@ -1,6 +1,7 @@
 export interface AppData {
   title: string;
   session_length: number;
+  category?: string;
 }
 
 export interface CategoryData {
@@ -9,9 +10,22 @@ export interface CategoryData {
   appData: AppData[];
 }
 
+export interface GroupedCategoryData {
+  categories: string[];
+  appData: AppData[];
+  session_length: number;
+  session_start: number;
+  session_end: number;
+}
+
 export interface CompileDataResponse {
   success: boolean;
   data: CategoryData[];
+}
+
+export interface GroupedCategoryDataResponse {
+  success: boolean;
+  data: GroupedCategoryData[];
 }
 
 export interface ActiveWindow {
