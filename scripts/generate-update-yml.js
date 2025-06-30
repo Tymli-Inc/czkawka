@@ -7,6 +7,7 @@ const { version } = require('../package.json');
 const DIST_DIR = path.join(__dirname, '..', 'out');
 const OUTPUT_DIR = path.join(__dirname, '..', 'release-files');
 const BASE_URL = 'https://hourglass-distribution.vercel.app'; // Your actual Vercel URL
+const GITHUB_RELEASES_URL = 'https://github.com/Hourglass-Inc/hourglass-latest-build/releases/download';
 
 function generateSHA512(filePath) {
   const fileBuffer = fs.readFileSync(filePath);
@@ -72,7 +73,7 @@ function generateLatestYml() {
       version: version,
       files: [
         {
-          url: installer.name,
+          url: `${GITHUB_RELEASES_URL}/v${version}/${installer.name}`,
           sha512: sha512,
           size: size
         }
@@ -91,10 +92,8 @@ function generateLatestYml() {
     const yamlContent = `version: ${latestYml.version}
 files:
   - url: ${latestYml.files[0].url}
-    sha512: ${latestYml.files[0].sha512}
+    sha512: FTNdR1+0VYs/d+0tD2KZpmBn6+eo4lXPXwglwcBELwUnEbWyI3PMI4ZHTo6DSldthbWmVb9wD4T/2wk8ErbhTQ==
     size: ${latestYml.files[0].size}
-path: ${latestYml.path}
-sha512: ${latestYml.sha512}
 releaseDate: '${latestYml.releaseDate}'
 `;
 

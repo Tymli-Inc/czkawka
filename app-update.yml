@@ -1,0 +1,3 @@
+provider: generic
+url: https://hourglass-distribution.vercel.app
+updaterCacheDirName: hourglass-updater
