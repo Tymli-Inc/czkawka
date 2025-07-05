@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const { version } = require('../package.json');
 
 // Configuration
-const DIST_DIR = path.join(__dirname, '..', 'out');
+const DIST_DIR = path.join(__dirname, '..', 'build', 'make', 'squirrel.windows', 'x64');
 const OUTPUT_DIR = path.join(__dirname, '..', 'release-files');
 const BASE_URL = 'https://hourglass-distribution.vercel.app'; // Your actual Vercel URL
 const GITHUB_RELEASES_URL = 'https://github.com/Hourglass-Inc/hourglass-latest-build/releases/download';
