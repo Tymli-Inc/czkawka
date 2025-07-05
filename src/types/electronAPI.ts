@@ -103,4 +103,8 @@ export interface ElectronAPI {
   getIdleStatistics: (days?: number) => Promise<DataResponse<any>>;
   getCurrentIdleStatus: () => Promise<IdleStatusResponse>;
   setIdleThreshold: (thresholdMs: number) => Promise<IdleThresholdResponse>;
+
+  // Auto-update APIs
+  checkForUpdates: () => Promise<SuccessResponse>;
+  installUpdate: () => Promise<SuccessResponse>;
 }
