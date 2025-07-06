@@ -1,0 +1,80 @@
+.controlsContainer {
+    display: grid;
+    grid-template-rows: repeat(2, 1fr);
+    gap: 20px;
+    border-radius: 5px;
+    height: 100%;
+}
+.focusButton {
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    overflow: hidden;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    background-image: url('https://github.com/AnmolPlayzz/personal-website-v3/blob/main/public/about/grid/linksbg.png?raw=true');
+    background-size: 105% 105%;
+    background-position: center;
+    background-color: white;
+    background-repeat: no-repeat;
+    transition:all 0.4s ease;
+    color: white;
+    svg {
+        z-index: 1;
+        transition: transform 0.4s ease;
+    }
+    span {
+        z-index: 2;
+        position: relative;
+        font-size: 16px;
+        font-weight: 500;
+        color: white;
+        transition: filter 0.7s ease;
+    }
+}
+
+.focusButton:hover {
+    svg {
+        transform: translateX(20px) scale(25) rotate(120deg);
+    }
+    span {
+        filter: invert(1);
+    }
+}
+
+.focusButton:active {
+    transform: scale(0.95);
+    opacity: 0.8;
+}
+
+.link {
+    background: #222222;
+    border-style: solid;
+    border-color: #333333;
+    border-width: 2px;
+    border-radius: 10px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 22px;
+    color: #ccc;
+    text-decoration: none;
+    transition: all 0.2s;
+
+}
+
+.link:hover {
+    background-color: rgba(255, 255, 255, 0.142);
+}
+
+.link:active {
+    background-color: #000000;
+    opacity: 0.4;
+    transform: scale(0.95);
+}
