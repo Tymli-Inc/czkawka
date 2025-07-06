@@ -67,7 +67,8 @@ const SettingsPage = () => {
   };
   useEffect(() => {
     loadStoredUser();
-    window.electronAPI.onAuthSuccess(async (userData) => {
+    
+    window.electronAPI.onAuthSuccess(async (userData: any) => {
       console.log('Authentication successful:', userData);
       setUser(userData);
       setIsLoggingIn(false);

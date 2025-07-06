@@ -23,5 +23,9 @@ export default defineConfig({
         manualChunks: undefined,
       },
     },
+    // Optimize dependencies for smaller bundle
+    commonjsOptions: {
+      exclude: ['react-icons'],
+    },
   },
 });

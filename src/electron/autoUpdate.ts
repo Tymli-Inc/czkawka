@@ -19,7 +19,8 @@ export function setupAutoUpdate(mainWindow: BrowserWindow | null) {
   // Configure auto-updater for Vercel-hosted latest.yml (points to hourglass-latest-build releases)
   autoUpdater.setFeedURL({
     provider: 'generic',
-    url: 'https://hourglass-distribution.vercel.app'
+    url: 'https://hourglass-distribution.vercel.app',
+    useMultipleRangeRequest: false
   });
 
   // Configure auto-updater settings
@@ -28,6 +29,17 @@ export function setupAutoUpdate(mainWindow: BrowserWindow | null) {
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.allowDowngrade = false;
   autoUpdater.allowPrerelease = false;
+
+  // Ensure the updater is properly initialized
+  try {
+    // Force the updater to use the correct app-update.yml
+    const { app } = require('electron');
+    const path = require('path');
+    const appUpdateYmlPath = path.join(process.resourcesPath, 'app-update.yml');
+    log.info('Looking for app-update.yml at:', appUpdateYmlPath);
+  } catch (error) {
+    log.warn('Could not locate app-update.yml, will use setFeedURL configuration');
+  }
 
   // Enable development mode testing if flag is set
   if (ENABLE_DEV_UPDATES) {

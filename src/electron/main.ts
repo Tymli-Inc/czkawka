@@ -36,19 +36,47 @@ const hourglassAutoLauncher = new AutoLaunch({
 // Ensure auto-launch is enabled and async
 const setupAutoLaunch = async () => {
   try {
+    // Only enable auto-launch in production builds
+    if (!app.isPackaged) {
+      log.info('Development mode: skipping auto-launch setup');
+      return;
+    }
+
+    log.info('Setting up auto-launch with path:', app.getPath('exe'));
+    
     const isEnabled = await hourglassAutoLauncher.isEnabled();
+    log.info('Current auto-launch status:', isEnabled);
+    
     if (!isEnabled) {
       await hourglassAutoLauncher.enable();
       log.info('Auto-launch enabled for Hourglass');
+      
+      // Verify it was actually enabled
+      const verifyEnabled = await hourglassAutoLauncher.isEnabled();
+      log.info('Auto-launch verification:', verifyEnabled);
     } else {
       log.info('Auto-launch already enabled for Hourglass');
     }
   } catch (error) {
     log.error('Failed to setup auto-launch:', error);
+    
+    // Try alternative approach using app.setLoginItemSettings
+    try {
+      log.info('Trying alternative auto-launch method...');
+      app.setLoginItemSettings({
+        openAtLogin: true,
+        openAsHidden: true,
+        name: 'Hourglass'
+      });
+      log.info('Alternative auto-launch method applied');
+    } catch (altError) {
+      log.error('Alternative auto-launch method also failed:', altError);
+    }
   }
 };
 
-setupAutoLaunch();
+// Setup auto-launch when app is ready
+let autoLaunchSetup = false;
 
 export let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -63,21 +91,44 @@ setupProtocolHandling();
 // Add initial log on app start
 log.info('Application starting: initializing main process');
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
     log.info('Electron app is ready');
     try {
         const dbInitialized = initializeDatabase();
         if (!dbInitialized) {
             log.error('Failed to initialize database');
-        }        // Detect installation and manual launch scenarios
-        const wasOpenedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin;
+        }
+        
+        // Setup auto-launch after app is ready
+        if (!autoLaunchSetup) {
+            await setupAutoLaunch();
+            autoLaunchSetup = true;
+        }
+        
+        // Detect installation and manual launch scenarios
+        const loginItemSettings = app.getLoginItemSettings();
+        const wasOpenedAtLogin = loginItemSettings.wasOpenedAtLogin;
         const hasHiddenFlag = process.argv.includes('--hidden');
         const isFirstRun = !app.getPath('userData') || !require('fs').existsSync(require('path').join(app.getPath('userData'), 'appdata.sqlite'));
         
+        log.info('Login item settings:', loginItemSettings);
+        log.info('Process arguments:', process.argv);
+        
         // Show window on: first install, manual launch, or development
+        // Hide window when: opened at login and not first run
         const shouldStartHidden = (wasOpenedAtLogin || hasHiddenFlag) && !isFirstRun && app.isPackaged;
 
-        log.info('Startup conditions:', { wasOpenedAtLogin, hasHiddenFlag, isFirstRun, isPackaged: app.isPackaged, shouldStartHidden });const { window, tray: appTray } = createMainWindow(app, shouldStartHidden);
+        log.info('Startup conditions:', { 
+          wasOpenedAtLogin, 
+          hasHiddenFlag, 
+          isFirstRun, 
+          isPackaged: app.isPackaged, 
+          shouldStartHidden,
+          executableName: loginItemSettings.executableWillLaunchAtLogin,
+          launchItems: loginItemSettings.launchItems
+        });
+        
+        const { window, tray: appTray } = createMainWindow(app, shouldStartHidden);
         mainWindow = window;
         tray = appTray;
 
@@ -90,7 +141,9 @@ app.whenReady().then(() => {
         setupAutoUpdate(mainWindow);
     } catch (error) {
         log.error('Error during app initialization:', error);
-    }    app.on('activate', () => {
+    }
+    
+    app.on('activate', () => {
         log.info('App activate event triggered');
         if (BrowserWindow.getAllWindows().length === 0) {
             const { window } = createMainWindow(app, false); // Show window on manual activation
