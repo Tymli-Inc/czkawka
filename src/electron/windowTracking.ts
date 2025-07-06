@@ -100,8 +100,9 @@ async function trackActiveWindow() {
       return;
     }
 
-    // Skip tracking if user is currently idle
+    // Skip all tracking if user is currently idle
     if (isCurrentlyIdle) {
+      log.info('User is idle, skipping window tracking');
       return;
     }
 
@@ -150,6 +151,7 @@ async function trackActiveWindow() {
           sessionDuration: updatedSessionDuration
         });
 
+        // Only update database periodically (every 10 seconds) and only if not idle
         if (updatedSessionDuration % 10000 < 1000) {
           await updateWindowSessionDuration(currentWindow.startTime, updatedSessionDuration);
         }
@@ -165,11 +167,19 @@ async function trackActiveWindow() {
 
 async function saveWindowToDatabase(windowData: any) {
   log.info('saveWindowToDatabase called with:', windowData);
+  
+  // Don't save to database if user is currently idle
+  if (isCurrentlyIdle) {
+    log.info('User is idle, skipping database save');
+    return;
+  }
+  
   try {
     const stmt = db.prepare(
         'INSERT INTO active_windows (title, unique_id, timestamp, session_length) VALUES (?, ?, ?, ?)'
     );
     stmt.run(windowData.title, windowData.id, windowData.startTime, 0);
+    log.info('Window data saved to database');
   } catch (error) {
     log.error('Error saving window to database:', error);
   }
@@ -177,11 +187,20 @@ async function saveWindowToDatabase(windowData: any) {
 
 async function updateWindowSessionDuration(timestamp: number, sessionDuration: number) {
   log.info('updateWindowSessionDuration called with timestamp:', timestamp, 'duration:', sessionDuration);
+  
+  // Allow updates during idle transition (when finalizing sessions)
+  // but prevent updates during ongoing idle periods
+  if (isCurrentlyIdle && !idleStartTime) {
+    log.info('User is idle, skipping session duration update');
+    return;
+  }
+  
   try {
     const updateStmt = db.prepare(
         'UPDATE active_windows SET session_length = ? WHERE timestamp = ?'
     );
     const result = updateStmt.run(sessionDuration, timestamp);
+    log.info('Session duration updated in database');
   } catch (error) {
     log.error('Error updating session duration:', error);
   }
@@ -202,7 +221,10 @@ function isEntertainmentApp(appTitle: string): boolean {
   return isEntertainment;
 }
 
-function findAppCategory(appTitle: string): string {
+function findAppCategory(appTitle: string): {
+  name: string,
+  color: string
+} {
   const normalizedTitle = appTitle.toLowerCase();
   
   for (const [categoryName, categoryData] of Object.entries(appCategories.categories)) {
@@ -211,10 +233,16 @@ function findAppCategory(appTitle: string): string {
       app.toLowerCase().includes(normalizedTitle)
     );
     if (found) {
-      return categoryName;
+      return {
+        name: categoryName,
+        color: categoryData.color
+      }
     }
   }
-  return 'uncategorized';
+  return {
+    name: 'uncategorized',
+    color: 'rgba(200, 200, 200, 0.25)' // Default color for uncategorized apps
+  };
 }
 
 async function checkIdleStatus() {
@@ -250,29 +278,34 @@ async function handleIdleStatusChange(isIdle: boolean) {
   log.info('handleIdleStatusChange called, isIdle:', isIdle);
   if (isIdle && !isCurrentlyIdle) {
     // User just became idle
-    log.info('User became idle at', idleStartTime);
+    log.info('User became idle, finalizing current session');
     isCurrentlyIdle = true;
     idleStartTime = Date.now();
     
-    // Pause window tracking during idle time
+    // Finalize current window session before going idle
     const currentWindow = memoryStore.get('currentWindow');
     if (currentWindow) {
       const sessionDurationBeforeIdle = Date.now() - currentWindow.startTime;
+      log.info(`Finalizing session for ${currentWindow.title} with duration: ${sessionDurationBeforeIdle}ms`);
       await updateWindowSessionDuration(currentWindow.startTime, sessionDurationBeforeIdle);
       
-      // Store the current state before going idle
+      // Store the current state before going idle (for potential resumption)
       memoryStore.set('windowBeforeIdle', {
         ...currentWindow,
         sessionDuration: sessionDurationBeforeIdle
       });
+      
+      // Clear current window to prevent further tracking
+      memoryStore.delete('currentWindow');
     }
     
     // Save idle start to database
     await saveIdleEventToDatabase('idle_start', Date.now());
+    log.info('Window tracking suspended due to idle state');
     
   } else if (!isIdle && isCurrentlyIdle) {
     // User just became active
-    log.info('User became active after idle');
+    log.info('User became active after idle, resuming window tracking');
     isCurrentlyIdle = false;
     lastActiveTime = Date.now();
     
@@ -286,20 +319,28 @@ async function handleIdleStatusChange(isIdle: boolean) {
       idleStartTime = null;
     }
     
-    // Resume window tracking
-    const windowBeforeIdle = memoryStore.get('windowBeforeIdle');
-    if (windowBeforeIdle) {
-      // Check if the same window is still active
+    // Resume window tracking - check what's currently active
+    try {
       const activeWindowCurrent = await getActiveWindow();
-      if (activeWindowCurrent && activeWindowCurrent.id === windowBeforeIdle.id) {
-        // Same window - continue tracking from where we left off
-        memoryStore.set('currentWindow', {
-          ...windowBeforeIdle,
-          startTime: Date.now() - windowBeforeIdle.sessionDuration
-        });
-      } else {
-        // Different window - start tracking new window
-        if (activeWindowCurrent) {
+      if (activeWindowCurrent) {
+        log.info('Resuming tracking for active window:', activeWindowCurrent.title);
+        
+        // Check if it's the same window as before idle
+        const windowBeforeIdle = memoryStore.get('windowBeforeIdle');
+        if (windowBeforeIdle && activeWindowCurrent.id === windowBeforeIdle.id) {
+          log.info('Same window as before idle, starting fresh session');
+          // Same window - start a new session (don't continue the old one)
+          const newWindow = {
+            id: activeWindowCurrent.id,
+            startTime: Date.now(),
+            sessionDuration: 0,
+            title: activeWindowCurrent.owner.name
+          };
+          memoryStore.set('currentWindow', newWindow);
+          await saveWindowToDatabase(newWindow);
+        } else {
+          // Different window - start tracking new window
+          log.info('Different window after idle, starting new session');
           const newWindow = {
             id: activeWindowCurrent.id,
             startTime: Date.now(),
@@ -309,9 +350,16 @@ async function handleIdleStatusChange(isIdle: boolean) {
           memoryStore.set('currentWindow', newWindow);
           await saveWindowToDatabase(newWindow);
         }
+      } else {
+        log.info('No active window detected after idle period');
       }
-      memoryStore.delete('windowBeforeIdle');
+    } catch (error) {
+      log.error('Error resuming window tracking after idle:', error);
     }
+    
+    // Clean up idle state
+    memoryStore.delete('windowBeforeIdle');
+    log.info('Window tracking resumed after idle period');
   }
 }
 
@@ -465,9 +513,23 @@ export async function getCurrentActiveWindow() {
   }
 }
 
-export function getActiveWindows() {
+export function getActiveWindows(timestamp?: number, endTime?: number) {
   log.info('getActiveWindows called');
-  return db.prepare('SELECT * FROM active_windows ORDER BY timestamp DESC').all();
+
+  let sql: string;
+  let params: any[] = [];
+  
+  if (endTime && timestamp) {
+    sql = 'SELECT * FROM active_windows WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC';
+    params = [timestamp, endTime];
+  } else if (timestamp) {
+    sql = 'SELECT * FROM active_windows WHERE timestamp > ? ORDER BY timestamp DESC';
+    params = [timestamp];
+  } else {
+    sql = 'SELECT * FROM active_windows ORDER BY timestamp DESC';
+  }
+  
+  return db.prepare(sql).all(...params);
 }
 
 export function compileWindowData(days?: number) {
@@ -703,51 +765,150 @@ export function setIdleThreshold(thresholdMs: number) {
 }
 
 export function getGroupedCategories(days?: number) {
-  log.info('getGroupedCategories called');
+  log.info('getGroupedCategories called with timestamp:', days);
   try {
-    const apps = getActiveWindows();
+    // Use the provided timestamp directly (it's the start time of the current day in epoch time)
+    const timestamp = days;
+    let endTime: number | undefined;
+    
+    // If we have a start timestamp, calculate the end of that day
+    if (timestamp) {
+      const startDate = new Date(timestamp);
+      const endDate = new Date(startDate);
+      endDate.setHours(23, 59, 59, 999);
+      endTime = endDate.getTime();
+    }
+    
+    const apps = getActiveWindows(timestamp, endTime);
+    
+    // Get idle events for the same time period
+    // For getIdleEvents, we need to calculate the number of days back from the timestamp
+    let daysBack: number | undefined;
+    if (days) {
+      const daysDifference = Math.ceil((Date.now() - days) / (24 * 60 * 60 * 1000));
+      daysBack = daysDifference > 0 ? daysDifference : undefined;
+    }
+    const idleEvents = getIdleEvents(daysBack);
+    const idlePeriods: Array<{ start: number; end: number }> = [];
+    
+    // Process idle events to create idle periods, filtering for the specific day
+    if (idleEvents.success && idleEvents.data) {
+      const events = idleEvents.data;
+      
+      // Filter events to only include those within the target day
+      const filteredEvents = timestamp && endTime ? 
+        events.filter((event: any) => event.timestamp >= timestamp && event.timestamp <= endTime) :
+        events;
+      
+      for (let i = 0; i < filteredEvents.length; i++) {
+        const event = filteredEvents[i];
+        if (event.event_type === 'idle_start') {
+          // Find the corresponding idle_end event
+          const idleEndEvent = filteredEvents.find((e: any, index: number) => 
+            index > i && e.event_type === 'idle_end' && e.timestamp > event.timestamp
+          );
+          
+          if (idleEndEvent) {
+            idlePeriods.push({
+              start: event.timestamp,
+              end: idleEndEvent.timestamp
+            });
+          }
+        }
+      }
+    }
+    
+    log.info('Found idle periods:', idlePeriods.length);
+    
+    function isInIdlePeriod(timestamp: number): boolean {
+      return idlePeriods.some(period => 
+        timestamp >= period.start && timestamp <= period.end
+      );
+    }
+    
+    function hasIdlePeriodBetween(startTime: number, endTime: number): boolean {
+      return idlePeriods.some(period => 
+        (period.start >= startTime && period.start <= endTime) ||
+        (period.end >= startTime && period.end <= endTime) ||
+        (period.start <= startTime && period.end >= endTime)
+      );
+    }
+    
     function groupApps(apps: any[]) {
       log.info('groupApps called with apps:', apps);
       const grouped: {
-          categories: string[];
+          categories: {
+            name: string,
+            color: string
+          }[];
           session_length: number;
           session_start: number;
           session_end: number;
           appData: Array<{ title: string; session_length: number; category: string }>;
         }[] = [];
       let prevAppEndTime: number = 0;
+      
       apps.forEach(app => {
         // Get the category of the app
         const category = findAppCategory(app.title);
-        //check if this apps start time is after the previous app's end time, if so, create a new group
-        if (app.timestamp+2000 > prevAppEndTime) {
-          console.log('Creating new group for app:', app.title, 'with category:', category);
+        const appStartTime = app.timestamp;
+        const appEndTime = app.timestamp + app.session_length;
+        
+        // Check if this app should start a new group
+        const shouldCreateNewGroup = 
+          // First app or significant time gap
+          app.timestamp + 2000 > prevAppEndTime ||
+          // App starts during an idle period
+          isInIdlePeriod(appStartTime) ||
+          // There's an idle period between the previous app and this one
+          (prevAppEndTime > 0 && hasIdlePeriodBetween(prevAppEndTime, appStartTime));
+        
+        if (shouldCreateNewGroup) {
+          console.log('Creating new group for app:', app.title, 'with category:', category, 
+                     'Reason:', isInIdlePeriod(appStartTime) ? 'starts during idle' : 
+                              hasIdlePeriodBetween(prevAppEndTime, appStartTime) ? 'idle period between apps' : 'time gap');
           grouped.push({
             categories: [category],
             session_length: app.session_length,
             session_start: app.timestamp,
             session_end: app.timestamp + app.session_length,
-            appData: [{ title: app.title, session_length: app.session_length, category }]
+            appData: [{ title: app.title, session_length: app.session_length, category: category.name }]
           });
+          prevAppEndTime = 0;
         } else {
           // If the app is in the same group, add it to the existing group
           const lastGroup = grouped[grouped.length - 1];
           if (lastGroup) {
-            if (!lastGroup.categories.includes(category)) {
-              lastGroup.categories.push(category);
+            // Check if there's an idle period within this app's session
+            if (hasIdlePeriodBetween(lastGroup.session_end, appEndTime)) {
+              // There's an idle period, so start a new group
+              console.log('Creating new group due to idle period during session for app:', app.title);
+              grouped.push({
+                categories: [category],
+                session_length: app.session_length,
+                session_start: app.timestamp,
+                session_end: app.timestamp + app.session_length,
+                appData: [{ title: app.title, session_length: app.session_length, category: category.name }]
+              });
+            } else {
+              // No idle period, add to existing group
+              if (lastGroup.categories.find(c => c.name == category.name) === undefined) {
+                lastGroup.categories.push(category);
+              }
+              lastGroup.session_length += app.session_length;
+              lastGroup.session_end = Math.max(lastGroup.session_end, app.timestamp + app.session_length);
+              lastGroup.appData.push({ title: app.title, session_length: app.session_length, category: category.name });
             }
-            lastGroup.session_length += app.session_length;
-            lastGroup.session_end = Math.max(lastGroup.session_end, app.timestamp + app.session_length);
-            lastGroup.appData.push({ title: app.title, session_length: app.session_length, category });
           }
         }
+        
         // Update the previous app's end time
         prevAppEndTime = app.timestamp + app.session_length;
-
       });
 
       return grouped;
     }
+    
     const groupedCategories = groupApps(apps);
 
     return {
@@ -764,3 +925,279 @@ export function getGroupedCategories(days?: number) {
     };
   }
 }
+
+export function getTimelineStats(targetDate: Date) {
+  log.info('getTimelineStats called for date:', targetDate.toDateString());
+  try {
+    const dayStart = new Date(targetDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(targetDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    // Get all window records for the specific date
+    const windowRecords = db.prepare(`
+      SELECT * FROM active_windows 
+      WHERE timestamp >= ? AND timestamp <= ?
+      ORDER BY timestamp ASC
+    `).all(dayStart.getTime(), dayEnd.getTime());
+
+    log.info(`Found ${windowRecords.length} window records for ${targetDate.toDateString()}`);
+
+    // Debug: Check session_length availability
+    const recordsWithSessionLength = windowRecords.filter((w: any) => w.session_length && w.session_length > 0);
+    log.info(`Records with session_length: ${recordsWithSessionLength.length}/${windowRecords.length}`);
+    
+    if (recordsWithSessionLength.length > 0) {
+      const avgSessionLength = recordsWithSessionLength.reduce((sum: number, w: any) => sum + w.session_length, 0) / recordsWithSessionLength.length;
+      log.info(`Average session length: ${Math.round(avgSessionLength/1000/60)}min`);
+    }
+
+    // Calculate total active time more accurately
+    let totalActiveTime = 0;
+    
+    for (let i = 0; i < windowRecords.length; i++) {
+      const window: any = windowRecords[i];
+      let windowDuration = 0;
+      
+      if (window.session_length && window.session_length > 0) {
+        // Use the stored session length as it represents actual active time
+        windowDuration = window.session_length;
+      } else {
+        // For windows without session_length, estimate conservatively
+        // Use a small default duration (e.g., 30 seconds) for window switches
+        // This prevents overcounting from gaps between windows
+        const DEFAULT_WINDOW_DURATION = 30 * 1000; // 30 seconds
+        windowDuration = DEFAULT_WINDOW_DURATION;
+        
+        // Only for the very last window of today, try to calculate from current time
+        if (i === windowRecords.length - 1) {
+          const isToday = targetDate.toDateString() === new Date().toDateString();
+          if (isToday) {
+            const timeSinceLastWindow = Date.now() - window.timestamp;
+            // Only use this if it's reasonable (less than 1 hour)
+            if (timeSinceLastWindow > 0 && timeSinceLastWindow < 60 * 60 * 1000) {
+              windowDuration = timeSinceLastWindow;
+            }
+          }
+        }
+      }
+      
+      // Cap individual window sessions to reasonable limits
+      const MAX_WINDOW_DURATION = 2 * 60 * 60 * 1000; // 2 hours max per window
+      if (windowDuration > MAX_WINDOW_DURATION) {
+        windowDuration = MAX_WINDOW_DURATION;
+      }
+      
+      totalActiveTime += windowDuration;
+      
+      // Log for debugging
+      if (i < 5) { // Log first 5 windows for debugging
+        log.info(`Window ${i}: ${window.title}, duration: ${windowDuration}ms (${Math.round(windowDuration/1000/60)}min), stored: ${window.session_length}`);
+      }
+    }
+
+    log.info(`Total active time calculated: ${totalActiveTime}ms (${Math.round(totalActiveTime/1000/60)}min)`);
+
+    // Count unique applications
+    const uniqueApps = new Set(
+      windowRecords
+        .map((window: any) => window.title)
+        .filter((title: string) => title && title.trim().length > 0)
+    );
+    const applicationsCount = uniqueApps.size;
+
+    // Get tracking sessions that overlap with the selected day
+    const trackingSessions = db.prepare(`
+      SELECT * FROM tracking_times 
+      WHERE (session_start < ? AND session_end > ?) OR 
+            (session_start >= ? AND session_start <= ?) OR
+            (session_end >= ? AND session_end <= ?)
+    `).all(
+      dayEnd.getTime(), dayStart.getTime(),  // Sessions that overlap
+      dayStart.getTime(), dayEnd.getTime(),  // Sessions that start within day
+      dayStart.getTime(), dayEnd.getTime()   // Sessions that end within day
+    );
+    const sessionsCount = trackingSessions.length;
+
+    // Calculate categories from window records for the specific date
+    let categoriesCount = 0;
+    if (windowRecords.length > 0) {
+      const dayCategories = new Set();
+      
+      // Group window records by category for this specific date
+      windowRecords.forEach((window: any) => {
+        const category = findAppCategory(window.title);
+        if (category && category.name) {
+          dayCategories.add(category.name);
+        }
+      });
+      
+      categoriesCount = dayCategories.size;
+    }
+
+    const stats = {
+      totalActiveTime,
+      sessionsCount,
+      applicationsCount,
+      categoriesCount,
+      date: targetDate.toISOString()
+    };
+
+    log.info('Timeline stats calculated:', stats);
+    
+    return {
+      success: true,
+      data: stats
+    };
+  } catch (error) {
+    log.error('Error calculating timeline stats:', error);
+    return {
+      success: false,
+      error: typeof error === 'object' && error !== null && 'message' in error
+        ? (error as { message: string }).message
+        : String(error),
+      data: null as any
+    };
+  }
+}
+
+export function getDailyCategoryBreakdown(timestamp: number) {
+  log.info('getDailyCategoryBreakdown called with timestamp:', timestamp);
+  try {
+    // Convert timestamp to start and end of day
+    const targetDate = new Date(timestamp);
+    const dayStart = new Date(targetDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(targetDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    log.info(`Getting category breakdown for ${targetDate.toDateString()} (${dayStart.getTime()} to ${dayEnd.getTime()})`);
+
+    // Get all window records for the specific date
+    const windowRecords = db.prepare(`
+      SELECT title, SUM(session_length) as total_session_length
+      FROM active_windows 
+      WHERE timestamp >= ? AND timestamp <= ?
+      GROUP BY title
+      ORDER BY total_session_length DESC
+    `).all(dayStart.getTime(), dayEnd.getTime());
+
+    log.info(`Found ${windowRecords.length} unique applications for ${targetDate.toDateString()}`);
+
+    // Group data by categories
+    const categoryBreakdown = new Map<string, {
+      category: string;
+      time: number;
+      color: string;
+    }>();
+
+    // Initialize all categories with 0 time
+    Object.entries(appCategories.categories).forEach(([categoryName, categoryData]) => {
+      categoryBreakdown.set(categoryName, {
+        category: categoryName,
+        time: 0,
+        color: categoryData.color
+      });
+    });
+
+    // Add uncategorized category
+    categoryBreakdown.set('uncategorized', {
+      category: 'uncategorized',
+      time: 0,
+      color: 'rgba(200, 200, 200, 0.25)'
+    });
+
+    // Process each app and categorize it
+    windowRecords.forEach((record: any) => {
+      const appTitle = record.title;
+      const sessionLength = record.total_session_length || 0;
+      
+      if (sessionLength > 0) {
+        const categoryInfo = findAppCategory(appTitle);
+        const categoryData = categoryBreakdown.get(categoryInfo.name);
+        
+        if (categoryData) {
+          categoryData.time += sessionLength;
+        }
+      }
+    });
+
+    // Convert to array and filter out categories with no time
+    const result = Array.from(categoryBreakdown.values())
+      .filter(category => category.time > 0)
+      .sort((a, b) => b.time - a.time); // Sort by time descending
+
+    log.info(`Category breakdown for ${targetDate.toDateString()}:`, result.map(c => `${c.category}: ${Math.round(c.time/1000/60)}min`));
+
+    return {
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    log.error('Error getting daily category breakdown:', error);
+    return {
+      success: false,
+      error: typeof error === 'object' && error !== null && 'message' in error
+        ? (error as { message: string }).message
+        : String(error),
+      data: [] as Array<{category: string; time: number; color: string}>
+    };
+  }
+}
+
+export function getTopAppsForDate(timestamp: number) {
+  log.info('getTopAppsForDate called with timestamp:', timestamp);
+  try {
+    // Convert timestamp to start and end of day
+    const targetDate = new Date(timestamp);
+    const dayStart = new Date(targetDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(targetDate);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    log.info(`Getting top 5 apps for ${targetDate.toDateString()} (${dayStart.getTime()} to ${dayEnd.getTime()})`);
+
+    // Get all window records for the specific date, grouped by app title
+    const windowRecords = db.prepare(`
+      SELECT title, SUM(session_length) as total_session_length
+      FROM active_windows 
+      WHERE timestamp >= ? AND timestamp <= ?
+      GROUP BY title
+      ORDER BY total_session_length DESC
+      LIMIT 5
+    `).all(dayStart.getTime(), dayEnd.getTime());
+
+    log.info(`Found ${windowRecords.length} applications for ${targetDate.toDateString()}`);
+
+    // Process each app and add category information
+    const result = windowRecords.map((record: any) => {
+      const appTitle = record.title;
+      const sessionLength = record.total_session_length || 0;
+      const categoryInfo = findAppCategory(appTitle);
+      
+      return {
+        title: appTitle,
+        time: sessionLength,
+        category: categoryInfo.name,
+        categoryColor: categoryInfo.color
+      };
+    }).filter((app: any) => app.time > 0); // Filter out apps with no time
+
+    log.info(`Top 5 apps for ${targetDate.toDateString()}:`, result.map((app: any) => `${app.title}: ${Math.round(app.time/1000/60)}min`));
+
+    return {
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    log.error('Error getting top apps for date:', error);
+    return {
+      success: false,
+      error: typeof error === 'object' && error !== null && 'message' in error
+        ? (error as { message: string }).message
+        : String(error),
+      data: [] as Array<{title: string; time: number; category: string; categoryColor: string}>
+    };
+  }
+}
+

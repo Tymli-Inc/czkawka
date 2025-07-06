@@ -1,5 +1,5 @@
 import { ipcMain, BrowserWindow } from 'electron';
-import { getGroupedCategories, getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes, getIdleEvents, getIdleStatistics, getCurrentIdleStatus, setIdleThreshold } from './windowTracking';
+import { getGroupedCategories, getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes, getIdleEvents, getIdleStatistics, getCurrentIdleStatus, setIdleThreshold, getTimelineStats, getDailyCategoryBreakdown, getTopAppsForDate } from './windowTracking';
 import {clearUserToken, getLoginStatus, getUserToken, handleLogin, storeUserToken, getUserData} from './auth';
 import { checkForUpdates, quitAndInstall } from './autoUpdate';
 import log from 'electron-log';
@@ -119,6 +119,52 @@ export function setupIpcHandlers() {
       return getGroupedCategories(days);
     } catch (error) {
       log.error('Error getting grouped categories:', error);
+      return {
+        success: false,
+        error: typeof error === 'object' && error !== null && 'message' in error
+          ? (error as { message: string }).message
+          : String(error),
+        data: []
+      };
+    }
+  });
+
+  ipcMain.handle('get-timeline-stats', (event, dateString: string) => {
+    try {
+      const targetDate = new Date(dateString);
+      return getTimelineStats(targetDate);
+    } catch (error) {
+      log.error('Error getting timeline stats:', error);
+      return {
+        success: false,
+        error: typeof error === 'object' && error !== null && 'message' in error
+          ? (error as { message: string }).message
+          : String(error),
+        data: null
+      };
+    }
+  });
+
+  ipcMain.handle('get-daily-category-breakdown', (event, timestamp: number) => {
+    try {
+      return getDailyCategoryBreakdown(timestamp);
+    } catch (error) {
+      log.error('Error getting daily category breakdown:', error);
+      return {
+        success: false,
+        error: typeof error === 'object' && error !== null && 'message' in error
+          ? (error as { message: string }).message
+          : String(error),
+        data: []
+      };
+    }
+  });
+
+  ipcMain.handle('get-top-apps-for-date', (event, timestamp: number) => {
+    try {
+      return getTopAppsForDate(timestamp);
+    } catch (error) {
+      log.error('Error getting top apps for date:', error);
       return {
         success: false,
         error: typeof error === 'object' && error !== null && 'message' in error

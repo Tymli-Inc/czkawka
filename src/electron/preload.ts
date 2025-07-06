@@ -65,6 +65,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getGroupedCategories: async (days?: number) => {
     return await ipcRenderer.invoke('get-grouped-categories', days);
   },
+  getDailyCategoryBreakdown: async (timestamp: number) => {
+    return await ipcRenderer.invoke('get-daily-category-breakdown', timestamp);
+  },
+  getTopAppsForDate: async (timestamp: number) => {
+    return await ipcRenderer.invoke('get-top-apps-for-date', timestamp);
+  },
+  getTimelineStats: async (dateString: string) => {
+    return await ipcRenderer.invoke('get-timeline-stats', dateString);
+  },
   login: async (): Promise<void> => {
     return await ipcRenderer.invoke('login');
   },

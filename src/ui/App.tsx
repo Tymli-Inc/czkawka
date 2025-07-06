@@ -1,4 +1,3 @@
-import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import TopBar from './components/TopBar';
 import Sidebar from './components/Sidebar';
@@ -8,8 +7,7 @@ import SettingsPage from './pages/SettingsPage';
 import AboutPage from './pages/AboutPage';
 import ScreentimePage from './pages/ScreentimePage';
 import CategoriesPage from './pages/CategoriesPage';
-import type { CompileDataResponse, ActiveWindow, WindowHistoryEntry } from '../types/windowTracking';
-
+import type { ElectronAPI } from '../types/electronAPI';
 declare global {
   interface Window {
     electronAPI: ElectronAPI;

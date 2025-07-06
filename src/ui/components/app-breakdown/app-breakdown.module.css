@@ -1,0 +1,26 @@
+.appBreakdownContainer {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgb(255, 255, 255);
+}
+
+.slideIn {
+    animation: slideInAnimation 0.8s ease-out forwards;
+}
+
+@keyframes slideInAnimation {
+    from {
+        width: 0%;
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}

@@ -50,3 +50,28 @@ export interface TrackingSession {
   session_start: number;
   session_end: number;
 }
+
+export interface DailyCategoryBreakdown {
+  category: string;
+  time: number;
+  color: string;
+}
+
+export interface DailyCategoryBreakdownResponse {
+  success: boolean;
+  data: DailyCategoryBreakdown[];
+  error?: string;
+}
+
+export interface TopAppForDate {
+  title: string;
+  time: number;
+  category: string;
+  categoryColor: string;
+}
+
+export interface TopAppsForDateResponse {
+  success: boolean;
+  data: TopAppForDate[];
+  error?: string;
+}

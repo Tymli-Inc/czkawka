@@ -1,6 +1,7 @@
 export interface AppCategory {
   description: string;
   apps: string[];
+  color: string;
 }
 
 export interface AppCategories {
@@ -13,6 +14,7 @@ export const appCategories: AppCategories = {
   categories: {
     development: {
       description: "Development tools, IDEs, and programming-related applications",
+      color: "#A554E8",
       apps: [
         "Visual Studio Code",
         "Electron",
@@ -26,6 +28,7 @@ export const appCategories: AppCategories = {
     },
     social: {
       description: "Social media, communication, and messaging applications",
+      color: "#FF9CF5",
       apps: [
         "Discord",
         "WhatsApp.exe",
@@ -34,6 +37,7 @@ export const appCategories: AppCategories = {
     },
     entertainment: {
       description: "Games, media players, and entertainment applications",
+      color: "#7DD4FF",
       apps: [
         "Teardown",
         "Minecraft.exe",
@@ -46,6 +50,7 @@ export const appCategories: AppCategories = {
     },
     productivity: {
       description: "Time tracking, office applications, and productivity tools",
+      color: "#877DFF",
       apps: [
         "Hourglass",
         "Hourglass Time Tracking Application",
@@ -59,6 +64,7 @@ export const appCategories: AppCategories = {
     },
     browsers: {
       description: "Web browsers and browser-related applications",
+      color: "#D178F0",
       apps: [
         "Google Chrome",
         "Zen"
@@ -66,6 +72,7 @@ export const appCategories: AppCategories = {
     },
     system: {
       description: "System utilities, Windows components, and OS-level applications",
+      color: "#9BA8FF",
       apps: [
         "Windows Explorer",
         "Windows Shell Experience Host",
@@ -80,6 +87,7 @@ export const appCategories: AppCategories = {
     },
     utilities: {
       description: "System utilities, tools, and hardware-related applications",
+      color: "#B494E8",
       apps: [
         "NVIDIA App",
         "VB-AUDIO Virtual Audio Device Mixing Console Application",
