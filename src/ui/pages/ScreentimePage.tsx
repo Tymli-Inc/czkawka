@@ -1,5 +1,3 @@
-import React from 'react';
-
 const ScreentimePage = () => {
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>

@@ -10,7 +10,7 @@ const config: ForgeConfig = {
     asar: true,
     executableName: "Hourglass",
     icon: "./assets/icons/hourglass",
-    extraResource: ['assets'],
+    extraResource: ['assets','app-update.yml'],
     // Exclude unnecessary files
     ignore: [
       /^\/\.vscode/,
@@ -24,7 +24,6 @@ const config: ForgeConfig = {
       /^\/vite\./,
       /^\/forge\.config/,
       /^\/README/,
-      /^\/app-update\.yml/,
       // Exclude dev dependencies that shouldn't be packaged
       /node_modules[/\\]electron($|[/\\])/,
       /node_modules[/\\]@electron-forge($|[/\\])/,
@@ -66,6 +65,11 @@ const config: ForgeConfig = {
         shortcutName: 'Hourglass',
         loadingGif: false,
         setupMsi: false,
+        // Add these for better update handling
+        noMsi: true,
+        skipUpdateIcon: false,
+        certificateFile: undefined,
+        certificatePassword: undefined,
       },
     },
     {

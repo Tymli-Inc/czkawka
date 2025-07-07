@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MdDownload, MdRefresh, MdCheckCircle, MdError, MdUpdate, MdCloudDownload } from 'react-icons/md';
+import { MdDownload, MdRefresh, MdCheckCircle, MdError, MdUpdate, MdCloudDownload, MdRestartAlt } from 'react-icons/md';
 
 interface UpdateStatusProps {
   className?: string;
@@ -63,6 +63,16 @@ const UpdateStatus: React.FC<UpdateStatusProps> = ({ className }) => {
       await window.electronAPI.installUpdate();
     } catch (error) {
       console.error('Error installing update:', error);
+    }
+  };
+
+  const handleResetUpdateState = async () => {
+    try {
+      await window.electronAPI.resetUpdateState();
+      setUpdateStatus(null);
+      setShowDetails(false);
+    } catch (error) {
+      console.error('Error resetting update state:', error);
     }
   };
 
@@ -322,6 +332,29 @@ const UpdateStatus: React.FC<UpdateStatusProps> = ({ className }) => {
           >
             <MdUpdate />
             Install & Restart
+          </button>
+        )}
+
+        {(updateStatus?.type === 'error' || updateStatus?.type === 'available') && (
+          <button
+            onClick={handleResetUpdateState}
+            style={{
+              padding: '12px 20px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'background-color 0.2s'
+            }}
+          >
+            <MdRestartAlt />
+            Reset Update State
           </button>
         )}
       </div>

@@ -157,10 +157,28 @@ export interface ElectronAPI {
   // Auto-update APIs
   /** Check for available application updates */
   checkForUpdates: () => Promise<{ success: boolean; message: string }>;
+  /** Force check for updates, bypassing any cooldown flags */
+  forceCheckForUpdates: () => Promise<{ success: boolean; message: string }>;
   /** Download and install available updates (will restart the app) */
   installUpdate: () => Promise<{ success: boolean; message: string }>;
+  /** Reset update state to clear any stuck update loops */
+  resetUpdateState: () => Promise<{ success: boolean; message: string }>;
   /** Listen for update status events (checking, available, downloaded, etc.) */
   onUpdateStatus: (callback: (status: any) => void) => void;
   /** Remove all update status event listeners */
   removeUpdateListener: () => void;
+  
+  // Window tracking control APIs
+  /** Toggle window tracking on/off and return the new state */
+  toggleWindowTracking: () => Promise<boolean>;
+  /** Get the current window tracking status */
+  getWindowTrackingStatus: () => Promise<boolean>;
+  /** Listen for window tracking status changes */
+  onTrackingStatusChanged: (callback: (enabled: boolean) => void) => void;
+  /** Remove window tracking status event listeners */
+  removeTrackingStatusListener: () => void;
+
+  // App info APIs
+  /** Get the current application version */
+  getAppVersion: () => Promise<string>;
 }

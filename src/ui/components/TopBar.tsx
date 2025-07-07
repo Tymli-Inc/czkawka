@@ -6,6 +6,7 @@ import hourglassLogo from '../../../assets/icons/hourglass.png';
 const TopBar = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [appVersion, setAppVersion] = useState<string>('');
   const location = useLocation();
   
   
@@ -62,6 +63,21 @@ const TopBar = () => {
   useEffect(() => {
     loadStoredUser();
   }, []);
+
+  useEffect(() => {
+    const getVersion = async () => {
+      if (window.electronAPI) {
+        try {
+          const version = await window.electronAPI.getAppVersion();
+          setAppVersion(version);
+        } catch (error) {
+          console.error('Failed to get app version:', error);
+        }
+      }
+    };
+    getVersion();
+  }, []);
+
   function UserBar() {
 
     
@@ -128,7 +144,21 @@ const TopBar = () => {
           alt="Hourglass Logo"
           style={{ width: 27, height: 27, marginLeft: 27 }}
         />
-        <h3 style={{ marginLeft: 15, fontWeight: 100, fontSize: 12, color: 'white' }}>Hourglass</h3>
+        <h3 style={{ marginLeft: 15, fontWeight: 100, fontSize: 12, color: 'white' }}>Tymli</h3>
+        {appVersion && (
+          <span style={{ 
+            marginLeft: 8, 
+            fontSize: 10, 
+            color: '#888', 
+            fontWeight: 300,
+            backgroundColor: '#333',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            border: '1px solid #555'
+          }}>
+            v{appVersion}
+          </span>
+        )}
       </div>
       <div style={{ 
         display: 'flex', 

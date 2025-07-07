@@ -7,6 +7,7 @@ import SettingsPage from './pages/SettingsPage';
 import AboutPage from './pages/AboutPage';
 import ScreentimePage from './pages/ScreentimePage';
 import CategoriesPage from './pages/CategoriesPage';
+import Blocking from './pages/Blocking';
 import type { ElectronAPI } from '../types/electronAPI';
 declare global {
   interface Window {
@@ -35,6 +36,7 @@ const App = () => {
               <Route path="/categories" element={<CategoriesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/about" element={<AboutPage />} />
+              <Route path="/blocking" element={<Blocking />} />
             </Routes>
           </main>
         </div>

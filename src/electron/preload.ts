@@ -41,11 +41,20 @@ interface ElectronAPI {
   getIdleStatistics: (days?: number) => Promise<{ success: boolean; data: any; error?: string }>;
   getCurrentIdleStatus: () => Promise<{ isIdle: boolean; idleStartTime: number | null; idleDuration: number; lastActiveTime: number; idleThreshold: number; error?: string }>;
   setIdleThreshold: (thresholdMs: number) => Promise<{ success: boolean; message?: string; oldThreshold?: number; newThreshold?: number; error?: string }>;
+  // Window tracking APIs
+  toggleWindowTracking: () => Promise<boolean>;
+  getWindowTrackingStatus: () => Promise<boolean>;
+  onTrackingStatusChanged: (callback: (enabled: boolean) => void) => void;
+  removeTrackingStatusListener: () => void;
   // Auto-update APIs
   checkForUpdates: () => Promise<{ success: boolean; message: string }>;
+  forceCheckForUpdates: () => Promise<{ success: boolean; message: string }>;
   installUpdate: () => Promise<{ success: boolean; message: string }>;
+  resetUpdateState: () => Promise<{ success: boolean; message: string }>;
   onUpdateStatus: (callback: (status: any) => void) => void;
   removeUpdateListener: () => void;
+  // App info APIs
+  getAppVersion: () => Promise<string>;
 };
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -154,13 +163,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return await ipcRenderer.invoke('set-idle-threshold', thresholdMs);
   },
 
+  // Window tracking APIs
+  toggleWindowTracking: async (): Promise<boolean> => {
+    return await ipcRenderer.invoke('toggle-window-tracking');
+  },
+  getWindowTrackingStatus: async (): Promise<boolean> => {
+    return await ipcRenderer.invoke('get-window-tracking-status');
+  },
+  onTrackingStatusChanged: (callback: (enabled: boolean) => void) => {
+    ipcRenderer.on('tracking-status-changed', (_, enabled) => callback(enabled));
+  },
+  removeTrackingStatusListener: () => {
+    ipcRenderer.removeAllListeners('tracking-status-changed');
+  },
+
   // Auto-update APIs
   checkForUpdates: async () => {
     return await ipcRenderer.invoke('check-for-updates');
   },
 
+  forceCheckForUpdates: async () => {
+    return await ipcRenderer.invoke('force-check-for-updates');
+  },
+
   installUpdate: async () => {
     return await ipcRenderer.invoke('install-update');
+  },
+
+  resetUpdateState: async () => {
+    return await ipcRenderer.invoke('reset-update-state');
   },
 
   onUpdateStatus: (callback: (status: any) => void) => {
@@ -175,4 +206,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onUpdateDownloaded: (callback: () => void) => {
     ipcRenderer.on('update-downloaded', () => callback());
   },
+
+  // App info APIs
+  getAppVersion: async (): Promise<string> => {
+    return await ipcRenderer.invoke('get-app-version');
+  }
 } as ElectronAPI);

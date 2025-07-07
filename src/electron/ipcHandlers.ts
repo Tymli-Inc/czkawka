@@ -1,9 +1,12 @@
-import { ipcMain, BrowserWindow } from 'electron';
-import { getGroupedCategories, getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes, getIdleEvents, getIdleStatistics, getCurrentIdleStatus, setIdleThreshold, getTimelineStats, getDailyCategoryBreakdown, getTopAppsForDate } from './windowTracking';
+import { ipcMain, BrowserWindow, app } from 'electron';
+import { getGroupedCategories, getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes, getIdleEvents, getIdleStatistics, getCurrentIdleStatus, setIdleThreshold, getTimelineStats, getDailyCategoryBreakdown, getTopAppsForDate, startActiveWindowTracking, stopActiveWindowTracking, toggleWindowTracking, getWindowTrackingStatus } from './windowTracking';
 import {clearUserToken, getLoginStatus, getUserToken, handleLogin, storeUserToken, getUserData} from './auth';
-import { checkForUpdates, quitAndInstall } from './autoUpdate';
+import { checkForUpdates, quitAndInstall, resetUpdateState, forceCheckForUpdates } from './autoUpdate';
 import log from 'electron-log';
 import type { UserData } from '../types/electronAPI';
+
+// Window tracking toggle state
+let isWindowTrackingEnabled = true;
 
 export function setupIpcHandlers() {
   ipcMain.handle('get-active-windows', () => {
@@ -224,9 +227,33 @@ export function setupIpcHandlers() {
     return { success: true, message: 'Update check initiated' };
   });
 
+  ipcMain.handle('force-check-for-updates', () => {
+    log.info('Force update check requested from renderer');
+    forceCheckForUpdates();
+    return { success: true, message: 'Force update check initiated' };
+  });
+
   ipcMain.handle('install-update', () => {
     log.info('Manual update install requested from renderer');
     quitAndInstall();
     return { success: true, message: 'Update installation initiated' };
+  });
+
+  ipcMain.handle('reset-update-state', () => {
+    return resetUpdateState();
+  });
+
+  // Window tracking handlers
+  ipcMain.handle('toggle-window-tracking', () => {
+    return toggleWindowTracking();
+  });
+
+  ipcMain.handle('get-window-tracking-status', () => {
+    return getWindowTrackingStatus();
+  });
+
+  // App info handlers
+  ipcMain.handle('get-app-version', () => {
+    return app.getVersion();
   });
 }

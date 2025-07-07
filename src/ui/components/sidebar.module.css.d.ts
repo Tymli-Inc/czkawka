@@ -13,6 +13,7 @@ const navList: string;
 const sidebarExpanded: string;
 const navItem: string;
 const focusButton: string;
+const trackingButton: string;
 const link: string;
 const linkActive: string;
 
@@ -24,6 +25,7 @@ export {
 	sidebarExpanded,
 	navItem,
 	focusButton,
+	trackingButton,
 	link,
 	linkActive
 };
@@ -36,6 +38,7 @@ export default {
 	sidebarExpanded,
 	navItem,
 	focusButton,
+	trackingButton,
 	link,
 	linkActive
 };

@@ -4,9 +4,9 @@ const crypto = require('crypto');
 const { version } = require('../package.json');
 
 // Configuration
-const DIST_DIR = path.join(__dirname, '..', 'build', 'make', 'squirrel.windows', 'x64');
+const DIST_DIR = path.join(__dirname, '..', 'build');
 const OUTPUT_DIR = path.join(__dirname, '..', 'release-files');
-const BASE_URL = 'https://hourglass-distribution.vercel.app'; // Your actual Vercel URL
+const BASE_URL = 'https://hourglass-distribution.vercel.app';
 const GITHUB_RELEASES_URL = 'https://github.com/Hourglass-Inc/hourglass-latest-build/releases/download';
 
 function generateSHA512(filePath) {
@@ -75,7 +75,8 @@ function generateLatestYml() {
         {
           url: `${GITHUB_RELEASES_URL}/v${version}/${installer.name}`,
           sha512: sha512,
-          size: size
+          size: size,
+          path: installer.name
         }
       ],
       path: installer.name,
@@ -90,10 +91,13 @@ function generateLatestYml() {
 
     // Write latest.yml
     const yamlContent = `version: ${latestYml.version}
+path: ${latestYml.path}
 files:
   - url: ${latestYml.files[0].url}
-    sha512: FTNdR1+0VYs/d+0tD2KZpmBn6+eo4lXPXwglwcBELwUnEbWyI3PMI4ZHTo6DSldthbWmVb9wD4T/2wk8ErbhTQ==
+    sha512: ${latestYml.files[0].sha512}
     size: ${latestYml.files[0].size}
+    path: ${latestYml.files[0].path}
+sha512: ${latestYml.sha512}
 releaseDate: '${latestYml.releaseDate}'
 `;
 

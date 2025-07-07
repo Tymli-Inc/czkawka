@@ -94,6 +94,13 @@ function loadSystemIdleTime(): boolean {
 
 async function trackActiveWindow() {
   log.info('trackActiveWindow called');
+  
+  // Skip tracking if disabled
+  if (!isTrackingEnabled) {
+    log.info('Window tracking is disabled, skipping...');
+    return;
+  }
+  
   try {
     if (!getActiveWindow) {
       log.error('get-windows is not available');
@@ -168,9 +175,9 @@ async function trackActiveWindow() {
 async function saveWindowToDatabase(windowData: any) {
   log.info('saveWindowToDatabase called with:', windowData);
   
-  // Don't save to database if user is currently idle
-  if (isCurrentlyIdle) {
-    log.info('User is idle, skipping database save');
+  // Don't save to database if tracking is disabled or user is currently idle
+  if (!isTrackingEnabled || isCurrentlyIdle) {
+    log.info('Window tracking disabled or user is idle, skipping database save');
     return;
   }
   
@@ -189,9 +196,9 @@ async function updateWindowSessionDuration(timestamp: number, sessionDuration: n
   log.info('updateWindowSessionDuration called with timestamp:', timestamp, 'duration:', sessionDuration);
   
   // Allow updates during idle transition (when finalizing sessions)
-  // but prevent updates during ongoing idle periods
-  if (isCurrentlyIdle && !idleStartTime) {
-    log.info('User is idle, skipping session duration update');
+  // but prevent updates during ongoing idle periods or when tracking is disabled
+  if ((!isTrackingEnabled && !idleStartTime) || (isCurrentlyIdle && !idleStartTime)) {
+    log.info('Window tracking disabled or user is idle, skipping session duration update');
     return;
   }
   
@@ -483,6 +490,45 @@ export function initializeWindowTracking(): void {
 
     stopActiveWindowTracking();
   });
+}
+
+// Window tracking state
+let isTrackingEnabled = true;
+
+export function toggleWindowTracking(): boolean {
+  isTrackingEnabled = !isTrackingEnabled;
+  
+  if (isTrackingEnabled) {
+    // Start tracking if it was stopped
+    const loginStatus = getLoginStatus();
+    if (loginStatus.isLoggedIn && !trackingInterval) {
+      log.info('Resuming window tracking...');
+      startActiveWindowTracking();
+    }
+  } else {
+    // Stop tracking
+    log.info('Pausing window tracking...');
+    if (trackingInterval) {
+      clearInterval(trackingInterval);
+      trackingInterval = null;
+    }
+    if (idleCheckInterval) {
+      clearInterval(idleCheckInterval);
+      idleCheckInterval = null;
+    }
+  }
+  
+  // Notify renderer process
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('tracking-status-changed', isTrackingEnabled);
+  }
+  
+  log.info(`Window tracking ${isTrackingEnabled ? 'enabled' : 'disabled'}`);
+  return isTrackingEnabled;
+}
+
+export function getWindowTrackingStatus(): boolean {
+  return isTrackingEnabled;
 }
 
 export function getMemoryStore() {

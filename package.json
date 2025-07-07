@@ -1,7 +1,7 @@
 {
   "name": "hourglass",
   "productName": "Hourglass",
-  "version": "0.0.7",
+  "version": "0.0.18",
   "description": "Hourglass Time Tracking Application",
   "main": ".vite/build/main.js",
   "scripts": {
@@ -13,7 +13,7 @@
     "rebuild": "electron-rebuild",
     "postinstall": "electron-rebuild",
     "install:clean": "rm -rf node_modules package-lock.json && npm install",
-    "generate-update-yml": "node scripts/generate-update-yml.js"
+    "yml": "node scripts/generate-update-yml.js"
   },
   "keywords": [],
   "author": {
