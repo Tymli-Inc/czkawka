@@ -224,7 +224,7 @@ export default function TimelineNew({
       
       // Calculate scroll delta (normalized for different devices)
       const delta = e.deltaY;
-      const scrollSpeed = 1.5; // Adjust this value to control scroll sensitivity
+      const scrollSpeed = 0.3; // Adjust this value to control scroll sensitivity
       
       // Calculate new position
       const containerHeight = timelineBaseRef.current?.getBoundingClientRect().height || 0;

@@ -1,0 +1,303 @@
+.timelineContainer {
+  background-color: #070707;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.timelineBase {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.scrollContainer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 30px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.scrollContent {
+  position: relative;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  pointer-events: auto;
+  transition: box-shadow 0.2s ease;
+  width: 100%;
+}
+
+.scrollContent:hover {
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.scrollContent:active {
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.15);
+}
+
+/* Smooth animations for interactions */
+.timelineContainer * {
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+/* Hour grid styling */
+.hourGrid {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.hourLine {
+  width: 100%;
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.timeLabel {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  height: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 300;
+}
+
+/* App usage blocks */
+.usageBlock {
+  position: absolute;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-weight: 400;
+}
+
+.usageBlock:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Current time indicator */
+.currentTimeIndicator {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #ff4444, #ff6666);
+  box-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
+  z-index: 5;
+}
+
+/* Resize handles */
+.resizeHandle {
+  position: absolute;
+  width: 100%;
+  height: 12px;
+  cursor: ns-resize;
+  background-color: rgba(255, 255, 255, 0.4);
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resizeHandle:hover {
+  background-color: rgba(255, 255, 255, 0.6);
+  opacity: 1 !important;
+}
+
+.resizeHandle.top {
+  top: 0;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+
+.resizeHandle.bottom {
+  bottom: 0;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+}
+
+/* App list styling */
+.appsList {
+  background-color: #070707;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.appsHeader {
+  background-color: rgba(0, 0, 0, 0.66);
+  padding: 10px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.appsContent {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.appItem {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.appItem.selected {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.appItem:not(.selected) {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.appItem:hover:not(.selected) {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.appItemContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.appDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.appName {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.appItem.selected .appName {
+  font-weight: 500;
+}
+
+.appMeta {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Empty state */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.emptyStateIcon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+/* Header styling */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 300;
+  color: rgba(158, 158, 158, 0.9);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Scrollbar styling */
+.appsContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.appsContent::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.appsContent::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.appsContent::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .timeLabel {
+    font-size: 9px;
+  }
+  
+  .usageBlock {
+    font-size: 10px;
+  }
+  
+  .appName {
+    font-size: 13px;
+  }
+  
+  .appMeta {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 900px) {
+  .appsContent {
+    padding: 15px;
+  }
+  
+  .appItem {
+    padding: 10px;
+  }
+}

@@ -23,83 +23,16 @@ export default function AppBreakdown({
                 console.log("Raw response:", response);
                 if (response.success) {
                     if (response.data.length > 0) {
-                        setData(response.data);
-                        console.log("App breakdown data fetched successfully:", response.data);
+                        // Filter out apps with less than 3 minutes (180,000ms) of screen time
+                        const filteredData = response.data.filter((app: any) => app.time >= 180000);
+                        setData(filteredData);
+                        console.log("App breakdown data fetched successfully:", filteredData);
                     } else {
-                        // Use mock data when no real data exists
-                        const mockData = [
-                            {
-                                title: "Visual Studio Code",
-                                time: 3600000, // 1 hour in milliseconds
-                                category: "development",
-                                categoryColor: "#A554E8"
-                            },
-                            {
-                                title: "Google Chrome",
-                                time: 2400000, // 40 minutes
-                                category: "browsers",
-                                categoryColor: "#D178F0"
-                            },
-                            {
-                                title: "Discord",
-                                time: 1800000, // 30 minutes
-                                category: "social",
-                                categoryColor: "#FF9CF5"
-                            },
-                            {
-                                title: "Spotify",
-                                time: 1200000, // 20 minutes
-                                category: "entertainment",
-                                categoryColor: "#7DD4FF"
-                            },
-                            {
-                                title: "Notepad",
-                                time: 600000, // 10 minutes
-                                category: "productivity",
-                                categoryColor: "#877DFF"
-                            }
-                        ];
-                        console.log("Using mock data for testing:", mockData);
-                        setData(mockData);
+                        setData([]);
                     }
                 } else {
                     console.error("Failed to fetch app breakdown data:", response.error);
-                    
-                    // For testing purposes, let's add some mock data if there's an error
-                    const mockData = [
-                        {
-                            title: "Visual Studio Code",
-                            time: 3600000, // 1 hour in milliseconds
-                            category: "development",
-                            categoryColor: "#A554E8"
-                        },
-                        {
-                            title: "Google Chrome",
-                            time: 2400000, // 40 minutes
-                            category: "browsers",
-                            categoryColor: "#D178F0"
-                        },
-                        {
-                            title: "Discord",
-                            time: 1800000, // 30 minutes
-                            category: "social",
-                            categoryColor: "#FF9CF5"
-                        },
-                        {
-                            title: "Spotify",
-                            time: 1200000, // 20 minutes
-                            category: "entertainment",
-                            categoryColor: "#7DD4FF"
-                        },
-                        {
-                            title: "Notepad",
-                            time: 600000, // 10 minutes
-                            category: "productivity",
-                            categoryColor: "#877DFF"
-                        }
-                    ];
-                    console.log("Using mock data due to error:", mockData);
-                    setData(mockData);
+                    setData([]);
                 }
             } catch (error) {
                 console.error("Error fetching app breakdown data:", error);
@@ -107,6 +40,12 @@ export default function AppBreakdown({
         }
 
         fetchData();
+
+        const interval = setInterval(() => {
+            fetchData();
+        }, 5 * 60 * 1000);
+
+        return () => clearInterval(interval);
     }, [selectedDate]);
 
 

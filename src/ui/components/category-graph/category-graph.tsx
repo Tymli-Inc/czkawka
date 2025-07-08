@@ -30,7 +30,16 @@ export default function CategoryGraph({
             }
         }
 
+        // Initial fetch
         fetchData();
+
+        // Set up interval to fetch data every 5 minutes (300000ms)
+        const interval = setInterval(() => {
+            fetchData();
+        }, 5 * 60 * 1000);
+
+        // Cleanup interval on component unmount or selectedDate change
+        return () => clearInterval(interval);
     }, [selectedDate]);
     const formatTime = (ms: number) => {
         const hours = Math.floor(ms / (1000 * 60 * 60));

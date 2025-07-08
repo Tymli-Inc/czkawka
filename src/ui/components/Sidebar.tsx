@@ -231,7 +231,7 @@ const Sidebar: React.FC = () => {
                   initial="hidden"
                   animate="visible"
                   exit="hidden"
-                  style={{ marginLeft: '6px', fontSize: '13px', color: '#ccc', whiteSpace: 'nowrap' }}
+                  style={{ marginLeft: '6px', whiteSpace: 'nowrap',fontSize: '13px',fontWeight: '900',color: '#000', }}
                 >
                   {trackingEnabled ? 'Tracking On' : 'Tracking Off'}
                 </motion.span>
