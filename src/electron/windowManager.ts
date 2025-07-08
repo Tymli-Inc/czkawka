@@ -28,8 +28,8 @@ export function createMainWindow(app: AppExtended, shouldStartHidden: boolean = 
       contextIsolation: true,
       nodeIntegration: false,
     },
-    minHeight: 600,
-    minWidth: 1100,
+    minHeight: 850,
+    minWidth: 1500,
   });
 
   log.info('Main window created with bounds', mainWindow.getBounds());
