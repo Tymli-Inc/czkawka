@@ -70,7 +70,6 @@ export async function setupDeepLinkHandlers(mainWindow: BrowserWindow | null) {
     }
   }
 
-
   app.on('second-instance', (event, argv) => {
     log.info('Second-instance event:', argv);
     const urlArg = argv.find(arg => arg.startsWith('hourglass://'));

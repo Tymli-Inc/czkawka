@@ -1,0 +1,96 @@
+{
+  "development": {
+    "description": "Development tools, IDEs, and programming-related applications",
+    "color": "#A554E8",
+    "keywords": [
+      "visual studio code", "vscode", "electron", "openjdk", "java", "sqlite", "pgadmin",
+      "intellij", "eclipse", "netbeans", "android studio", "xcode", "git", "github",
+      "docker", "mongodb", "mysql", "postgresql", "redis", "node", "npm", "yarn",
+      "webpack", "babel", "eslint", "prettier", "typescript", "react", "angular", "vue","localhost"
+    ]
+  },
+  "work": {
+    "description": "Office suites, task managers, and productivity tools for work",
+    "color": "#877DFF",
+    "keywords": [
+      "hourglass", "microsoft office", "word", "excel", "powerpoint", "outlook",
+      "onedrive", "google drive", "dropbox", "notepad", "notion", "evernote",
+      "trello", "asana", "monday", "clickup", "todoist", "any.do", "rescuetime",
+      "toggl", "clockify", "harvest", "timely", "sharex", "greenshot", "snagit"
+    ]
+  },
+  "communication": {
+    "description": "Professional communication tools like Slack, Zoom, and Teams",
+    "color": "#FFCB6B",
+    "keywords": [
+      "slack", "teams", "zoom", "skype", "webex", "gotomeeting",
+      "whatsapp", "signal", "messenger", "viber", "line", "wechat"
+    ]
+  },
+  "social": {
+    "description": "Social media and messaging applications for casual communication",
+    "color": "#FF9CF5",
+    "keywords": [
+      "facebook", "twitter", "instagram", "tiktok", "snapchat", "linkedin",
+      "reddit", "pinterest", "youtube", "twitch", "discord", "telegram"
+    ]
+  },
+  "entertainment": {
+    "description": "Games, streaming platforms, and media consumption tools",
+    "color": "#7DD4FF",
+    "keywords": [
+      "steam", "teardown", "minecraft", "plex", "spotify", "netflix",
+      "xbox", "playstation", "nintendo", "epic", "origin",
+      "uplay", "gog", "vlc", "media player", "itunes", "winamp", "foobar"
+    ]
+  },
+  "creative": {
+    "description": "Tools for design, editing, streaming, and content creation",
+    "color": "#FFD166",
+    "keywords": [
+      "obs", "streamlabs", "audacity", "gimp", "photoshop", "premiere", "after effects",
+      "illustrator", "indesign", "figma", "sketch", "canva", "blender", "unity",
+      "unreal", "davinci resolve", "final cut", "logic pro", "ableton", "fl studio"
+    ]
+  },
+  "learning": {
+    "description": "Apps and websites for online learning and self-improvement",
+    "color": "#06D6A0",
+    "keywords": [
+      "coursera", "udemy", "khan academy", "edx", "brilliant", "duolingo", "udacity",
+      "medium", "wikipedia", "obsidian"
+    ]
+  },
+  "browsers": {
+    "description": "Web browsers and related apps",
+    "color": "#D178F0",
+    "keywords": [
+      "chrome", "firefox", "safari", "edge", "brave", "opera", "vivaldi",
+      "tor", "zen", "waterfox", "pale moon", "seamonkey", "internet explorer"
+    ]
+  },
+  "utilities": {
+    "description": "System and hardware-related tools, file transfer utilities",
+    "color": "#B494E8",
+    "keywords": [
+      "nvidia", "amd", "intel", "driver", "gpu", "cpu", "monitoring", "hwinfo",
+      "msi afterburner", "gpu-z", "cpu-z", "speccy", "ccleaner", "malwarebytes",
+      "antivirus", "firewall", "winrar", "7zip", "utorrent", "bittorrent",
+      "remote desktop", "teamviewer", "anydesk", "vnc", "putty", "filezilla"
+    ]
+  },
+  "system": {
+    "description": "Operating system and native Windows components",
+    "color": "#9BA8FF",
+    "keywords": [
+      "windows explorer", "explorer", "shell", "start", "search", "terminal",
+      "powershell", "cmd", "command prompt", "control panel", "settings",
+      "registry", "services", "msconfig", "taskbar", "cortana", "file explorer"
+    ]
+  },
+  "miscellaneous": {
+    "description": "Uncategorized or unknown applications",
+    "color": "#808080",
+    "keywords": []
+  }
+}

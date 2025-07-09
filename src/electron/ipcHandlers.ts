@@ -2,6 +2,7 @@ import { ipcMain, BrowserWindow, app } from 'electron';
 import { getGroupedCategories, getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes, getIdleEvents, getIdleStatistics, getCurrentIdleStatus, setIdleThreshold, getTimelineStats, getDailyCategoryBreakdown, getTopAppsForDate, startActiveWindowTracking, stopActiveWindowTracking, toggleWindowTracking, getWindowTrackingStatus } from './windowTracking';
 import {clearUserToken, getLoginStatus, getUserToken, handleLogin, storeUserToken, getUserData} from './auth';
 import { checkForUpdates, quitAndInstall, resetUpdateState, forceCheckForUpdates } from './autoUpdate';
+import CategoryManager from './categoryManager';
 import log from 'electron-log';
 import type { UserData } from '../types/electronAPI';
 
@@ -255,5 +256,165 @@ export function setupIpcHandlers() {
   // App info handlers
   ipcMain.handle('get-app-version', () => {
     return app.getVersion();
+  });
+
+  // Category management handlers
+  ipcMain.handle('get-app-categories', async () => {
+    try {
+      log.info('IPC: Getting app categories');
+      const categoryManager = CategoryManager.getInstance();
+      const categories = categoryManager.getFinalCategories();
+      return {
+        success: true,
+        data: categories
+      };
+    } catch (error) {
+      log.error('IPC: Failed to get app categories:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('get-detected-apps', async () => {
+    try {
+      log.info('IPC: Getting detected apps');
+      const categoryManager = CategoryManager.getInstance();
+      const detectedApps = categoryManager.getDetectedApps();
+      return {
+        success: true,
+        data: detectedApps
+      };
+    } catch (error) {
+      log.error('IPC: Failed to get detected apps:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('get-user-category-settings', async () => {
+    try {
+      log.info('IPC: Getting user category settings');
+      const categoryManager = CategoryManager.getInstance();
+      const settings = categoryManager.getUserSettings();
+      return {
+        success: true,
+        data: settings
+      };
+    } catch (error) {
+      log.error('IPC: Failed to get user category settings:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('create-custom-category', async (event, name: string, description: string, color: string) => {
+    try {
+      log.info('IPC: Creating custom category', { name, description, color });
+      const categoryManager = CategoryManager.getInstance();
+      const result = categoryManager.createCustomCategory(name, description, color);
+      return result;
+    } catch (error) {
+      log.error('IPC: Failed to create custom category:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('update-custom-category', async (event, id: string, name: string, description: string, color: string) => {
+    try {
+      log.info('IPC: Updating custom category', { id, name, description, color });
+      const categoryManager = CategoryManager.getInstance();
+      const success = categoryManager.updateCustomCategory(id, name, description, color);
+      return {
+        success,
+        message: success ? 'Custom category updated successfully' : 'Failed to update custom category'
+      };
+    } catch (error) {
+      log.error('IPC: Failed to update custom category:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('delete-custom-category', async (event, id: string) => {
+    try {
+      log.info('IPC: Deleting custom category', { id });
+      const categoryManager = CategoryManager.getInstance();
+      const success = categoryManager.deleteCustomCategory(id);
+      return {
+        success,
+        message: success ? 'Custom category deleted successfully' : 'Failed to delete custom category'
+      };
+    } catch (error) {
+      log.error('IPC: Failed to delete custom category:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('assign-app-to-category', async (event, appName: string, categoryId: string) => {
+    try {
+      log.info('IPC: Assigning app to category', { appName, categoryId });
+      const categoryManager = CategoryManager.getInstance();
+      const success = categoryManager.assignAppToCategory(appName, categoryId);
+      return {
+        success,
+        message: success ? 'App assigned to category successfully' : 'Failed to assign app to category'
+      };
+    } catch (error) {
+      log.error('IPC: Failed to assign app to category:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('remove-app-category-assignment', async (event, appName: string) => {
+    try {
+      log.info('IPC: Removing app category assignment', { appName });
+      const categoryManager = CategoryManager.getInstance();
+      const success = categoryManager.removeAppCategoryAssignment(appName);
+      return {
+        success,
+        message: success ? 'App category assignment removed successfully' : 'Failed to remove app category assignment'
+      };
+    } catch (error) {
+      log.error('IPC: Failed to remove app category assignment:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('reset-categories-to-defaults', async () => {
+    try {
+      log.info('IPC: Resetting categories to defaults');
+      const categoryManager = CategoryManager.getInstance();
+      const success = categoryManager.resetToDefaults();
+      return {
+        success,
+        message: success ? 'Categories reset to defaults successfully' : 'Failed to reset categories to defaults'
+      };
+    } catch (error) {
+      log.error('IPC: Failed to reset categories to defaults:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
   });
 }

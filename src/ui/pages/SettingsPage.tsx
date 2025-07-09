@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MdSettings } from 'react-icons/md';
 import UpdateStatus from '../components/UpdateStatus';
+import AppCategoryManager from '../components/app-category-manager/app-category-manager';
 
 const SettingsPage = () => {
   const [user, setUser] = useState<any>(null);
@@ -230,6 +231,19 @@ const SettingsPage = () => {
           Save Settings
         </button>
       </div>
+
+      {/* App Category Management Section */}
+      {user && (
+        <div style={{
+          backgroundColor: '#070707',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          border: "1px solid rgba(255, 255, 255, 0.1)",
+          overflow: 'hidden'
+        }}>
+          <AppCategoryManager />
+        </div>
+      )}
 
       <UpdateStatus />
     </div>

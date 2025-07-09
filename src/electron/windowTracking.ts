@@ -4,7 +4,15 @@ import { app } from 'electron';
 import {db} from "./database";
 import {getLoginStatus} from "./auth";
 import {mainWindow} from "./main";
-import { appCategories, AppCategories } from './app-categories';
+import { defaultCategories, AppCategories } from './app-categories';
+import CategoryManager from './categoryManager';
+import UrlTrackingService from './urlTracking';
+
+// Initialize CategoryManager instance
+let categoryManager: CategoryManager;
+
+// Initialize URL tracking service
+let urlTrackingService: UrlTrackingService;
 
 // Add idle detection import
 let getSystemIdleTime: any;
@@ -92,6 +100,15 @@ function loadSystemIdleTime(): boolean {
   return false;
 }
 
+// Helper function to get enhanced window title
+function getEnhancedWindowTitle(originalTitle: string): string {
+  // Enhance window title with URL information for browsers
+  if (urlTrackingService && urlTrackingService.isBrowserWindow(originalTitle)) {
+    return urlTrackingService.getEnhancedWindowTitle(originalTitle);
+  }
+  return originalTitle;
+}
+
 async function trackActiveWindow() {
   log.info('trackActiveWindow called');
   
@@ -123,11 +140,12 @@ async function trackActiveWindow() {
 
       if (currentWindow === undefined) {
         // First time tracking
+        const enhancedTitle = getEnhancedWindowTitle(activeWindowCurrent.owner.name);
         const newWindow = {
           id: activeWindowCurrent.id,
           startTime: Date.now(),
           sessionDuration: 0,
-          title: activeWindowCurrent.owner.name
+          title: enhancedTitle
         };
         memoryStore.set('currentWindow', newWindow);
 
@@ -140,23 +158,45 @@ async function trackActiveWindow() {
 
         memoryStore.set('previousWindow', { ...currentWindow, sessionDuration: finalSessionDuration });
 
+        const enhancedTitle = getEnhancedWindowTitle(activeWindowCurrent.owner.name);
         const newWindow = {
           id: activeWindowCurrent.id,
           startTime: Date.now(),
           sessionDuration: 0,
-          title: activeWindowCurrent.owner.name
+          title: enhancedTitle
         };
         memoryStore.set('currentWindow', newWindow);
 
         // Save new window to database
         await saveWindowToDatabase(newWindow);
       } else {
-        // Same window - update session duration in memory only
+        // Same window - check if title should be updated (for URL changes)
+        const enhancedTitle = getEnhancedWindowTitle(activeWindowCurrent.owner.name);
         const updatedSessionDuration = Date.now() - currentWindow.startTime;
-        memoryStore.set('currentWindow', {
-          ...currentWindow,
-          sessionDuration: updatedSessionDuration
-        });
+        
+        // Check if the enhanced title has changed (URL changed)
+        if (currentWindow.title !== enhancedTitle) {
+          log.info(`Window title changed from "${currentWindow.title}" to "${enhancedTitle}"`);
+          
+          // Save the previous window session with old title
+          await updateWindowSessionDuration(currentWindow.startTime, updatedSessionDuration);
+          
+          // Start a new session with the new title
+          const newWindow = {
+            id: activeWindowCurrent.id,
+            startTime: Date.now(),
+            sessionDuration: 0,
+            title: enhancedTitle
+          };
+          memoryStore.set('currentWindow', newWindow);
+          await saveWindowToDatabase(newWindow);
+        } else {
+          // Same window, same title - update session duration in memory only
+          memoryStore.set('currentWindow', {
+            ...currentWindow,
+            sessionDuration: updatedSessionDuration
+          });
+        }
 
         // Only update database periodically (every 10 seconds) and only if not idle
         if (updatedSessionDuration % 10000 < 1000) {
@@ -182,11 +222,12 @@ async function saveWindowToDatabase(windowData: any) {
   }
   
   try {
+    // windowData.title should already be enhanced at this point
     const stmt = db.prepare(
         'INSERT INTO active_windows (title, unique_id, timestamp, session_length) VALUES (?, ?, ?, ?)'
     );
     stmt.run(windowData.title, windowData.id, windowData.startTime, 0);
-    log.info('Window data saved to database');
+    log.info('Window data saved to database with title:', windowData.title);
   } catch (error) {
     log.error('Error saving window to database:', error);
   }
@@ -216,16 +257,32 @@ async function updateWindowSessionDuration(timestamp: number, sessionDuration: n
 function isEntertainmentApp(appTitle: string): boolean {
   const normalizedTitle = appTitle.toLowerCase();
   
-  const isEntertainment = appCategories.categories.entertainment.apps.some(app => 
-    normalizedTitle.includes(app.toLowerCase()) || 
-    app.toLowerCase().includes(normalizedTitle)
-  );
-  
-  if (isEntertainment) {
-    log.info(`Entertainment app detected: ${appTitle}`);
+  try {
+    if (!categoryManager) {
+      categoryManager = CategoryManager.getInstance();
+    }
+    
+    const finalCategories = categoryManager.getFinalCategories();
+    const entertainmentCategory = finalCategories.categories.entertainment;
+    
+    if (!entertainmentCategory) {
+      return false;
+    }
+    
+    const isEntertainment = entertainmentCategory.apps.some((app: string) => 
+      normalizedTitle.includes(app.toLowerCase()) || 
+      app.toLowerCase().includes(normalizedTitle)
+    );
+    
+    if (isEntertainment) {
+      log.info(`Entertainment app detected: ${appTitle}`);
+    }
+    
+    return isEntertainment;
+  } catch (error) {
+    log.error('Error checking entertainment app:', error);
+    return false;
   }
-  
-  return isEntertainment;
 }
 
 function findAppCategory(appTitle: string): {
@@ -234,22 +291,93 @@ function findAppCategory(appTitle: string): {
 } {
   const normalizedTitle = appTitle.toLowerCase();
   
-  for (const [categoryName, categoryData] of Object.entries(appCategories.categories)) {
-    const found = categoryData.apps.some(app => 
-      normalizedTitle.includes(app.toLowerCase()) || 
-      app.toLowerCase().includes(normalizedTitle)
-    );
-    if (found) {
-      return {
-        name: categoryName,
-        color: categoryData.color
+  try {
+    if (!categoryManager) {
+      categoryManager = CategoryManager.getInstance();
+    }
+    
+    const finalCategories = categoryManager.getFinalCategories();
+    
+    // First, check if this is a browser window with URL tracking
+    if (urlTrackingService && urlTrackingService.isBrowserWindow(appTitle)) {
+      const urlInfo = urlTrackingService.getBrowserUrlInfo(appTitle);
+      
+      if (urlInfo && urlInfo.isValidUrl && urlInfo.domain && urlInfo.domain !== 'browsing') {
+        // Try to get category suggestion based on domain
+        const suggestedCategory = urlTrackingService.getCategorySuggestionForDomain(urlInfo.domain);
+        
+        if (suggestedCategory && finalCategories.categories[suggestedCategory]) {
+          log.info(`Browser categorized by domain: ${appTitle} -> ${suggestedCategory} (${urlInfo.domain})`);
+          return {
+            name: suggestedCategory,
+            color: finalCategories.categories[suggestedCategory].color
+          };
+        }
+      }
+      
+      // For browsers without valid URLs, fallback to browsers category
+      if (finalCategories.categories.browsers) {
+        log.info(`Browser categorized as general browsing: ${appTitle}`);
+        return {
+          name: 'browsers',
+          color: finalCategories.categories.browsers.color
+        };
       }
     }
+    
+    // For enhanced browser titles (e.g., "Chrome - youtube.com"), extract domain and categorize
+    const browserDomainMatch = appTitle.match(/^(.+?)\s*-\s*(.+)$/);
+    if (browserDomainMatch) {
+      const [, browserName, domain] = browserDomainMatch;
+      
+      // Check if the first part is a browser name
+      if (urlTrackingService && urlTrackingService.isBrowserWindow(browserName.trim())) {
+        const suggestedCategory = urlTrackingService.getCategorySuggestionForDomain(domain.trim());
+        
+        if (suggestedCategory && finalCategories.categories[suggestedCategory]) {
+          log.info(`Enhanced browser title categorized by domain: ${appTitle} -> ${suggestedCategory} (${domain.trim()})`);
+          return {
+            name: suggestedCategory,
+            color: finalCategories.categories[suggestedCategory].color
+          };
+        }
+        
+        // If domain categorization fails, use browsers category
+        if (finalCategories.categories.browsers) {
+          log.info(`Enhanced browser title categorized as browsers: ${appTitle}`);
+          return {
+            name: 'browsers',
+            color: finalCategories.categories.browsers.color
+          };
+        }
+      }
+    }
+    
+    // Regular app categorization logic for non-browser apps
+    for (const [categoryName, categoryData] of Object.entries(finalCategories.categories)) {
+      const found = categoryData.apps.some((app: string) => 
+        normalizedTitle.includes(app.toLowerCase()) || 
+        app.toLowerCase().includes(normalizedTitle)
+      );
+      if (found) {
+        return {
+          name: categoryName,
+          color: categoryData.color
+        }
+      }
+    }
+    
+    return {
+      name: 'miscellaneous',
+      color: 'rgba(200, 200, 200, 0.25)' // Default color for miscellaneous apps
+    };
+  } catch (error) {
+    log.error('Error finding app category:', error);
+    return {
+      name: 'miscellaneous',
+      color: 'rgba(200, 200, 200, 0.25)' // Default color for miscellaneous apps
+    };
   }
-  return {
-    name: 'uncategorized',
-    color: 'rgba(200, 200, 200, 0.25)' // Default color for uncategorized apps
-  };
 }
 
 async function checkIdleStatus() {
@@ -413,6 +541,12 @@ export function startActiveWindowTracking() {
   log.info('Starting idle detection...');
   idleCheckInterval = setInterval(checkIdleStatus, IDLE_CHECK_INTERVAL);
   
+  // Start URL tracking
+  if (urlTrackingService) {
+    log.info('Starting URL tracking...');
+    urlTrackingService.startPolling();
+  }
+  
   db.prepare(`
     INSERT INTO tracking_times (session_start, session_end)
     VALUES (?, ?)
@@ -431,6 +565,12 @@ export function stopActiveWindowTracking() {
     clearInterval(idleCheckInterval);
     idleCheckInterval = null;
     log.info('Idle detection stopped');
+  }
+  
+  // Stop URL tracking
+  if (urlTrackingService) {
+    log.info('Stopping URL tracking...');
+    urlTrackingService.stopPolling();
   }
   
   // If user was idle when stopping, save the idle end event
@@ -453,6 +593,14 @@ export function initializeWindowTracking(): void {
   try {
     loadGetWindows();
     loadSystemIdleTime();
+    
+    // Initialize the category manager
+    categoryManager = CategoryManager.getInstance();
+    log.info('CategoryManager initialized');
+    
+    // Initialize the URL tracking service
+    urlTrackingService = UrlTrackingService.getInstance();
+    log.info('UrlTrackingService initialized');
   } catch (error) {
     log.error('Critical error loading modules:', error);
   }
@@ -466,6 +614,7 @@ export function initializeWindowTracking(): void {
   } catch (error) {
     log.error('Error checking login status during window tracking initialization:', error);
   }
+  
   app.on('window-all-closed', () => {
     const currentWindow = memoryStore.get('currentWindow');
     if (currentWindow) {
@@ -594,19 +743,76 @@ export function compileWindowData(days?: number) {
   const dataPool = db.prepare(query).all(...params);
 
   log.info('Data pool:', dataPool.length);
-  function findAppCategory(appTitle: string): string {
+  
+  function findAppCategoryName(appTitle: string): string {
     const normalizedTitle = appTitle.toLowerCase();
     
-    for (const [categoryName, categoryData] of Object.entries(appCategories.categories)) {
-      const found = categoryData.apps.some(app => 
-        normalizedTitle.includes(app.toLowerCase()) || 
-        app.toLowerCase().includes(normalizedTitle)
-      );
-      if (found) {
-        return categoryName;
+    try {
+      if (!categoryManager) {
+        categoryManager = CategoryManager.getInstance();
       }
+      
+      const finalCategories = categoryManager.getFinalCategories();
+      
+      // First, check if this is a browser window with URL tracking
+      if (urlTrackingService && urlTrackingService.isBrowserWindow(appTitle)) {
+        const urlInfo = urlTrackingService.getBrowserUrlInfo(appTitle);
+        
+        if (urlInfo && urlInfo.isValidUrl && urlInfo.domain && urlInfo.domain !== 'browsing') {
+          // Try to get category suggestion based on domain
+          const suggestedCategory = urlTrackingService.getCategorySuggestionForDomain(urlInfo.domain);
+          
+          if (suggestedCategory && finalCategories.categories[suggestedCategory]) {
+            log.info(`Browser categorized by domain: ${appTitle} -> ${suggestedCategory} (${urlInfo.domain})`);
+            return suggestedCategory;
+          }
+        }
+        
+        // For browsers without valid URLs, fallback to browsers category
+        if (finalCategories.categories.browsers) {
+          log.info(`Browser categorized as general browsing: ${appTitle}`);
+          return 'browsers';
+        }
+      }
+      
+      // For enhanced browser titles (e.g., "Chrome - youtube.com"), extract domain and categorize
+      const browserDomainMatch = appTitle.match(/^(.+?)\s*-\s*(.+)$/);
+      if (browserDomainMatch) {
+        const [, browserName, domain] = browserDomainMatch;
+        
+        // Check if the first part is a browser name
+        if (urlTrackingService && urlTrackingService.isBrowserWindow(browserName.trim())) {
+          const suggestedCategory = urlTrackingService.getCategorySuggestionForDomain(domain.trim());
+          
+          if (suggestedCategory && finalCategories.categories[suggestedCategory]) {
+            log.info(`Enhanced browser title categorized by domain: ${appTitle} -> ${suggestedCategory} (${domain.trim()})`);
+            return suggestedCategory;
+          }
+          
+          // If domain categorization fails, use browsers category
+          if (finalCategories.categories.browsers) {
+            log.info(`Enhanced browser title categorized as browsers: ${appTitle}`);
+            return 'browsers';
+          }
+        }
+      }
+      
+      // Regular app categorization logic for non-browser apps
+      for (const [categoryName, categoryData] of Object.entries(finalCategories.categories)) {
+        const found = categoryData.apps.some((app: string) => 
+          normalizedTitle.includes(app.toLowerCase()) || 
+          app.toLowerCase().includes(normalizedTitle)
+        );
+        if (found) {
+          return categoryName;
+        }
+      }
+      
+      return 'miscellaneous';
+    } catch (error) {
+      log.error('Error finding app category:', error);
+      return 'miscellaneous';
     }
-    return 'uncategorized';
   }
 
   // Group data by categories
@@ -616,52 +822,59 @@ export function compileWindowData(days?: number) {
     appData: Array<{ title: string; session_length: number }>;
   }>();
 
-  // Initialize categories
-  Object.keys(appCategories.categories).forEach(categoryName => {
-    categoryData.set(categoryName, {
-      title: categoryName,
-      session_length: 0,
-      appData: []
-    });
-  });
-
-  // Add uncategorized category
-  categoryData.set('uncategorized', {
-    title: 'uncategorized',
-    session_length: 0,
-    appData: []
-  });
-
-  // Process each app and categorize it
-  dataPool.forEach((item: any) => {
-    const appTitle = item.title;
-    const sessionLength = item['SUM(session_length)'] || 0;
-    const category = findAppCategory(appTitle);
-    
-    const categoryInfo = categoryData.get(category);
-    if (categoryInfo) {
-      categoryInfo.session_length += sessionLength;
-      categoryInfo.appData.push({
-        title: appTitle,
-        session_length: sessionLength
-      });
+  try {
+    if (!categoryManager) {
+      categoryManager = CategoryManager.getInstance();
     }
-  });
+    
+    const finalCategories = categoryManager.getFinalCategories();
+    
+    // Initialize categories
+    Object.keys(finalCategories.categories).forEach(categoryName => {
+      categoryData.set(categoryName, {
+        title: categoryName,
+        session_length: 0,
+        appData: []
+      });
+    });
 
-  // Convert map to array and filter out categories with no data
-  const result = Array.from(categoryData.values())
-    .filter(category => category.session_length > 0)
-    .map(category => ({
-      title: category.title,
-      session_length: category.session_length,
-      appData: category.appData.sort((a, b) => b.session_length - a.session_length) // Sort apps by session length descending
-    }))
-    .sort((a, b) => b.session_length - a.session_length); // Sort categories by total session length descending
+    // Process each app and categorize it
+    dataPool.forEach((item: any) => {
+      const appTitle = item.title;
+      const sessionLength = item['SUM(session_length)'] || 0;
+      const category = findAppCategoryName(appTitle);
+      
+      const categoryInfo = categoryData.get(category);
+      if (categoryInfo) {
+        categoryInfo.session_length += sessionLength;
+        categoryInfo.appData.push({
+          title: appTitle,
+          session_length: sessionLength
+        });
+      }
+    });
 
-  return {
-    success: true,
-    data: result
-  };
+    // Convert map to array and filter out categories with no data
+    const result = Array.from(categoryData.values())
+      .filter(category => category.session_length > 0)
+      .map(category => ({
+        title: category.title,
+        session_length: category.session_length,
+        appData: category.appData.sort((a, b) => b.session_length - a.session_length) // Sort apps by session length descending
+      }))
+      .sort((a, b) => b.session_length - a.session_length); // Sort categories by total session length descending
+
+    return {
+      success: true,
+      data: result
+    };
+  } catch (error) {
+    log.error('Error compiling window data:', error);
+    return {
+      success: false,
+      data: []
+    };
+  }
 }
 
 export function getTrackingTimes(days?: number) {
@@ -1137,20 +1350,19 @@ export function getDailyCategoryBreakdown(timestamp: number) {
       color: string;
     }>();
 
+    if (!categoryManager) {
+      categoryManager = CategoryManager.getInstance();
+    }
+    
+    const finalCategories = categoryManager.getFinalCategories();
+    
     // Initialize all categories with 0 time
-    Object.entries(appCategories.categories).forEach(([categoryName, categoryData]) => {
+    Object.entries(finalCategories.categories).forEach(([categoryName, categoryData]) => {
       categoryBreakdown.set(categoryName, {
         category: categoryName,
         time: 0,
         color: categoryData.color
       });
-    });
-
-    // Add uncategorized category
-    categoryBreakdown.set('uncategorized', {
-      category: 'uncategorized',
-      time: 0,
-      color: 'rgba(200, 200, 200, 0.25)'
     });
 
     // Process each app and categorize it

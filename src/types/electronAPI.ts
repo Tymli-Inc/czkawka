@@ -181,4 +181,66 @@ export interface ElectronAPI {
   // App info APIs
   /** Get the current application version */
   getAppVersion: () => Promise<string>;
+
+  // Category management APIs
+  /** Get all app categories with user customizations applied */
+  getAppCategories: () => Promise<{
+    success: boolean;
+    data?: {
+      detectedApps: string[];
+      categories: { [key: string]: { description: string; color: string; apps: string[]; isCustom?: boolean } };
+    };
+    error?: string;
+  }>;
+  /** Get all detected apps from the database */
+  getDetectedApps: () => Promise<{
+    success: boolean;
+    data?: string[];
+    error?: string;
+  }>;
+  /** Get user category settings (custom categories and app overrides) */
+  getUserCategorySettings: () => Promise<{
+    success: boolean;
+    data?: {
+      customCategories: { [key: string]: { description: string; color: string; apps: string[]; isCustom?: boolean } };
+      appCategoryOverrides: { [appName: string]: string };
+    };
+    error?: string;
+  }>;
+  /** Create a new custom category */
+  createCustomCategory: (name: string, description: string, color: string) => Promise<{
+    success: boolean;
+    id?: string;
+    error?: string;
+  }>;
+  /** Update an existing custom category */
+  updateCustomCategory: (id: string, name: string, description: string, color: string) => Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }>;
+  /** Delete a custom category */
+  deleteCustomCategory: (id: string) => Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }>;
+  /** Assign an app to a specific category */
+  assignAppToCategory: (appName: string, categoryId: string) => Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }>;
+  /** Remove app category assignment (will fall back to default) */
+  removeAppCategoryAssignment: (appName: string) => Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }>;
+  /** Reset all categories to defaults */
+  resetCategoriesToDefaults: () => Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }>;
 }

@@ -134,11 +134,16 @@ app.whenReady().then(async () => {
 
         log.info(shouldStartHidden ? 'App started hidden to system tray' : 'App started with visible window');
 
+        // Initialize window tracking (includes URL tracking for browsers)
         initializeWindowTracking();
         setupIpcHandlers();
         setupDeepLinkHandlers(mainWindow);
         // Start auto-update check
         setupAutoUpdate(mainWindow);
+        
+        // Optional: Test URL tracking (enable for debugging)
+        // import testUrlTracking from './urlTrackingTest';
+        // testUrlTracking();
     } catch (error) {
         log.error('Error during app initialization:', error);
     }
