@@ -501,7 +501,7 @@ class UrlTrackingService {
     const browserNames = [
       'chrome', 'firefox', 'safari', 'edge', 'brave', 'opera', 'vivaldi',
       'tor', 'zen', 'waterfox', 'pale moon', 'seamonkey', 'internet explorer',
-      'google chrome', 'mozilla firefox', 'microsoft edge'
+      'google chrome', 'mozilla firefox', 'microsoft edge',"google chrome"
     ];
 
     // Extract base browser name if it's an enhanced title
@@ -541,31 +541,59 @@ class UrlTrackingService {
    * @param {string} domain - Domain name to categorize
    * @returns {string | null} Suggested category ID or null if error
    */
-  public getCategorySuggestionForDomain(domain: string): string | null {
+  public getCategorySuggestionForDomain(domain: string, windowTitle?: string): string | null {
     // Handle empty domains or general browsing
-    if (!domain || domain === 'browsing') {
+    if ((!domain || domain === 'browsing') && !windowTitle) {
       return 'browsers';
     }
 
     try {
-      // Get CategoryManager instance for intelligent categorization
       const categoryManager = CategoryManager.getInstance();
       
-      // Use the domain as input to the categorization algorithm
-      // This allows domains to be matched against the same keyword system
-      // used for application categorization
-      const categoryId = categoryManager.categorizeItem(domain);
-      
-      // Return the category determined by the smart categorization system
-      // If no specific category matched, it will return 'miscellaneous'
-      if (categoryId === 'miscellaneous') {
-        // For domains that don't match any category, return 'miscellaneous'
-        return 'miscellaneous';
+      // 1. Try domain base (e.g., 'youtube' from 'youtube.com') - prioritize this
+      if (domain && domain !== 'browsing') {
+        const base = domain.split('.')[0];
+        let categoryId = categoryManager.categorizeItem(base, base, true);
+        if (categoryId !== 'miscellaneous') {
+          log.debug(`UrlTrackingService: Domain base "${base}" categorized as "${categoryId}"`);
+          return categoryId;
+        }
+        categoryId = categoryManager.categorizeItem(domain, domain, true);
+        if (categoryId !== 'miscellaneous') {
+          log.debug(`UrlTrackingService: Full domain "${domain}" categorized as "${categoryId}"`);
+          return categoryId;
+        }
       }
       
-      return categoryId;
+      // 2. Fallback: Try extracting a keyword from the window title (after the dash)
+      if (windowTitle) {
+        // Extract the part after the dash (e.g., 'youtube.com' from 'Google Chrome - youtube.com')
+        let extracted = windowTitle;
+        const dashIdx = windowTitle.indexOf(' - ');
+        if (dashIdx > 0 && dashIdx + 3 < windowTitle.length) {
+          extracted = windowTitle.substring(dashIdx + 3).trim();
+        } else if (dashIdx > 0) {
+          extracted = windowTitle.substring(0, dashIdx).trim();
+        }
+        
+        // Try the extracted part as a domain
+        const extractedBase = extracted.split('.')[0];
+        let categoryId = categoryManager.categorizeItem(extractedBase, extractedBase, true);
+        if (categoryId !== 'miscellaneous') {
+          log.debug(`UrlTrackingService: Window title extracted base "${extractedBase}" categorized as "${categoryId}"`);
+          return categoryId;
+        }
+        
+        categoryId = categoryManager.categorizeItem(extracted, extracted, true);
+        if (categoryId !== 'miscellaneous') {
+          log.debug(`UrlTrackingService: Window title extracted "${extracted}" categorized as "${categoryId}"`);
+          return categoryId;
+        }
+      }
+      
+      log.debug(`UrlTrackingService: No category found for domain "${domain}" and window title "${windowTitle}"`);
+      return 'miscellaneous';
     } catch (error) {
-      // If categorization fails, fall back to miscellaneous
       log.error('UrlTrackingService: Error getting category suggestion for domain:', error);
       return 'miscellaneous';
     }

@@ -298,41 +298,14 @@ function findAppCategory(appTitle: string): {
     
     const finalCategories = categoryManager.getFinalCategories();
     
-    // First, check if this is a browser window with URL tracking
-    if (urlTrackingService && urlTrackingService.isBrowserWindow(appTitle)) {
-      const urlInfo = urlTrackingService.getBrowserUrlInfo(appTitle);
-      
-      if (urlInfo && urlInfo.isValidUrl && urlInfo.domain && urlInfo.domain !== 'browsing') {
-        // Try to get category suggestion based on domain
-        const suggestedCategory = urlTrackingService.getCategorySuggestionForDomain(urlInfo.domain);
-        
-        if (suggestedCategory && finalCategories.categories[suggestedCategory]) {
-          log.info(`Browser categorized by domain: ${appTitle} -> ${suggestedCategory} (${urlInfo.domain})`);
-          return {
-            name: suggestedCategory,
-            color: finalCategories.categories[suggestedCategory].color
-          };
-        }
-      }
-      
-      // For browsers without valid URLs, fallback to browsers category
-      if (finalCategories.categories.browsers) {
-        log.info(`Browser categorized as general browsing: ${appTitle}`);
-        return {
-          name: 'browsers',
-          color: finalCategories.categories.browsers.color
-        };
-      }
-    }
-    
-    // For enhanced browser titles (e.g., "Chrome - youtube.com"), extract domain and categorize
+    // First, check for enhanced browser titles (e.g., "Chrome - youtube.com") - prioritize this over URL tracking
     const browserDomainMatch = appTitle.match(/^(.+?)\s*-\s*(.+)$/);
     if (browserDomainMatch) {
       const [, browserName, domain] = browserDomainMatch;
       
       // Check if the first part is a browser name
       if (urlTrackingService && urlTrackingService.isBrowserWindow(browserName.trim())) {
-        const suggestedCategory = urlTrackingService.getCategorySuggestionForDomain(domain.trim());
+        const suggestedCategory = urlTrackingService.getCategorySuggestionForDomain(domain.trim(), appTitle);
         
         if (suggestedCategory && finalCategories.categories[suggestedCategory]) {
           log.info(`Enhanced browser title categorized by domain: ${appTitle} -> ${suggestedCategory} (${domain.trim()})`);
@@ -350,6 +323,33 @@ function findAppCategory(appTitle: string): {
             color: finalCategories.categories.browsers.color
           };
         }
+      }
+    }
+    
+    // Second, check if this is a browser window with URL tracking (fallback for browsers without domain in title)
+    if (urlTrackingService && urlTrackingService.isBrowserWindow(appTitle)) {
+      const urlInfo = urlTrackingService.getBrowserUrlInfo(appTitle);
+      
+      if (urlInfo && urlInfo.isValidUrl && urlInfo.domain && urlInfo.domain !== 'browsing') {
+        // Try to get category suggestion based on domain
+        const suggestedCategory = urlTrackingService.getCategorySuggestionForDomain(urlInfo.domain, appTitle);
+        
+        if (suggestedCategory && finalCategories.categories[suggestedCategory]) {
+          log.info(`Browser categorized by URL tracking: ${appTitle} -> ${suggestedCategory} (${urlInfo.domain})`);
+          return {
+            name: suggestedCategory,
+            color: finalCategories.categories[suggestedCategory].color
+          };
+        }
+      }
+      
+      // For browsers without valid URLs, fallback to browsers category
+      if (finalCategories.categories.browsers) {
+        log.info(`Browser categorized as general browsing: ${appTitle}`);
+        return {
+          name: 'browsers',
+          color: finalCategories.categories.browsers.color
+        };
       }
     }
     

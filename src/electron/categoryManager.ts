@@ -37,12 +37,12 @@ export class CategoryManager {
   
   // Cache for detected apps to avoid frequent database queries
   private detectedAppsCache: string[] = [];
-  
-  // Timestamp of last cache update for TTL (Time To Live) management
   private lastDetectedAppsUpdate: number = 0;
-  
-  // Cache expiration time (30 seconds) - balances performance vs data freshness
   private readonly CACHE_TTL = 30000; // 30 seconds
+
+  // --- New: Cache for final categories and detected apps hash ---
+  private finalCategoriesCache: AppCategories | null = null;
+  private detectedAppsHash: string = '';
 
   /**
    * Private constructor implementing singleton pattern
@@ -263,80 +263,88 @@ export class CategoryManager {
     }
   }
 
+  // --- New: Helper to compute a hash of detected apps for cache invalidation ---
+  private computeAppsHash(apps: string[]): string {
+    return apps.sort().join('|');
+  }
+
   /**
    * Smart application categorization using keyword matching and user preferences
-   * 
+   *
    * This is the core categorization algorithm that determines which category
    * an application belongs to based on:
    * 1. User-defined overrides (highest priority)
-   * 2. Smart browser content detection
+   * 2. Smart browser content detection (now supports domain)
    * 3. Keyword matching against default categories
    * 4. Custom category assignments
    * 5. Fallback to 'miscellaneous' category
-   * 
-   * Special handling for browser windows:
-   * - Detects if window is from a browser application
-   * - Prioritizes content-specific categories over browser category
-   * - Example: "YouTube - Chrome" → 'entertainment' instead of 'development'
-   * 
+   *
    * @param {string} appName - The application name/window title to categorize
+   * @param {string} [domain] - (Optional) The domain for browser windows
+   * @param {boolean} [exactWord] - (Optional) If true, match keywords as whole words only
    * @returns {string} The category ID that the app should be assigned to
    */
-  private categorizeSingleApp(appName: string): string {
-    // Normalize app name to lowercase for case-insensitive matching
+  private categorizeSingleApp(appName: string, domain?: string, exactWord?: boolean): string {
     const normalizedAppName = appName.toLowerCase();
-    
+    const normalizedDomain = domain ? domain.toLowerCase() : '';
+
     // Priority 1: Check user-defined overrides first
-    // These are manual assignments that should always take precedence
     if (this.userSettings.appCategoryOverrides[appName]) {
       return this.userSettings.appCategoryOverrides[appName];
     }
-    
-    // Priority 2: Special handling for browser windows with content URLs
-    // This handles cases where browser windows show content-specific titles
-    // Example: "YouTube - Chrome" should be categorized as 'entertainment', not 'development'
-    
-    // List of common browser applications
+
+    // Priority 2: Special handling for browser windows with content URLs/domains
     const browserKeywords = ['chrome', 'firefox', 'safari', 'edge', 'brave', 'opera', 'vivaldi'];
     const isBrowserWindow = browserKeywords.some(keyword => normalizedAppName.includes(keyword));
-    
     if (isBrowserWindow) {
-      // For browser windows, prioritize content categories over browser category
-      // Check content-specific categories in order of priority
       const contentCategories = ['social', 'entertainment', 'learning', 'development', 'work'];
-      
       for (const categoryId of contentCategories) {
         if (defaultCategoryDefinitions[categoryId]) {
-          // Check if any keywords from this category match the app name
           for (const keyword of defaultCategoryDefinitions[categoryId].keywords) {
-            if (normalizedAppName.includes(keyword.toLowerCase()) || 
-                keyword.toLowerCase().includes(normalizedAppName)) {
-              return categoryId;
+            // --- Word-to-word match if exactWord is true ---
+            if (exactWord) {
+              if ((normalizedDomain && keyword.toLowerCase() === normalizedDomain) ||
+                  (normalizedAppName === keyword.toLowerCase())) {
+                return categoryId;
+              }
+            } else {
+              if (
+                (normalizedDomain && (normalizedDomain.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(normalizedDomain))) ||
+                normalizedAppName.includes(keyword.toLowerCase()) ||
+                keyword.toLowerCase().includes(normalizedAppName) ||
+                (keyword.match(/\w+\.\w+/) && normalizedDomain && normalizedDomain.includes(keyword.toLowerCase()))
+              ) {
+                return categoryId;
+              }
             }
           }
         }
       }
+      return 'browsers';
     }
-    
+
     // Priority 3: Check against default category keyword definitions
-    // This handles most standard applications
     for (const [categoryId, categoryDef] of Object.entries(defaultCategoryDefinitions)) {
       for (const keyword of categoryDef.keywords) {
-        // Bidirectional matching: app name contains keyword OR keyword contains app name
-        if (normalizedAppName.includes(keyword.toLowerCase()) || 
-            keyword.toLowerCase().includes(normalizedAppName)) {
-          return categoryId;
+        if (exactWord) {
+          if (normalizedAppName === keyword.toLowerCase()) {
+            return categoryId;
+          }
+        } else {
+          if (normalizedAppName.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(normalizedAppName)) {
+            return categoryId;
+          }
         }
       }
     }
-    
+
     // Priority 4: Check if app is explicitly assigned to a custom category
     for (const [categoryId, categoryData] of Object.entries(this.userSettings.customCategories)) {
       if (categoryData.apps.includes(appName)) {
         return categoryId;
       }
     }
-    
+
     // Priority 5: Default fallback category for unmatched applications
     return 'miscellaneous';
   }
@@ -360,14 +368,25 @@ export class CategoryManager {
   public getFinalCategories(): AppCategories {
     try {
       log.info('CategoryManager: Building final categories with dynamic detection');
-      
-      // Step 1: Get all currently detected applications from the database
       const detectedApps = this.getDetectedApps();
+      const currentAppsHash = this.computeAppsHash(detectedApps);
+
+      // Use cache if detected apps and settings have not changed
+      if (
+        this.finalCategoriesCache &&
+        this.detectedAppsHash === currentAppsHash
+      ) {
+        log.info('CategoryManager: Returning cached final categories');
+        return this.finalCategoriesCache;
+      }
+
+      // Step 1: Get all currently detected applications from the database
+      // const detectedApps = this.getDetectedApps();
       
       // Step 2: Initialize the final categories structure
       const finalCategories: AppCategories = {
-        detectedApps,        // List of all detected apps
-        categories: {}       // Categories with their assigned apps
+        detectedApps,
+        categories: {}
       };
 
       // Step 3: Initialize all default categories with empty app lists
@@ -376,33 +395,29 @@ export class CategoryManager {
         finalCategories.categories[categoryId] = {
           description: defaultCategories.categories[categoryId].description,
           color: defaultCategories.categories[categoryId].color,
-          apps: []  // Will be populated in step 5
+          apps: []
         };
       });
 
       // Step 4: Add user-created custom categories
       Object.keys(this.userSettings.customCategories).forEach(categoryId => {
-        finalCategories.categories[categoryId] = { 
+        finalCategories.categories[categoryId] = {
           ...this.userSettings.customCategories[categoryId],
-          apps: []  // Will be populated in step 5
+          apps: []
         };
       });
 
       // Step 5: Categorize each detected application using smart categorization
       detectedApps.forEach(appName => {
         const categoryId = this.categorizeSingleApp(appName);
-        
-        // Ensure the determined category exists (handle edge cases)
         if (!finalCategories.categories[categoryId]) {
           finalCategories.categories[categoryId] = {
             description: 'Custom category',
-            color: '#808080',  // Default gray color
+            color: '#808080',
             apps: [],
             isCustom: true
           };
         }
-        
-        // Add app to the determined category (avoid duplicates)
         if (!finalCategories.categories[categoryId].apps.includes(appName)) {
           finalCategories.categories[categoryId].apps.push(appName);
         }
@@ -425,16 +440,23 @@ export class CategoryManager {
         detectedApps: detectedApps.length,
         categorizedApps: detectedApps.length
       });
-
+      // --- Cache the result and hash ---
+      this.finalCategoriesCache = finalCategories;
+      this.detectedAppsHash = currentAppsHash;
       return finalCategories;
     } catch (error) {
-      // If anything goes wrong, return default categories structure
       log.error('CategoryManager: Failed to build final categories:', error);
       return {
         detectedApps: this.getDetectedApps(),
         categories: { ...defaultCategories.categories }
       };
     }
+  }
+
+  // --- New: Invalidate cache helper ---
+  private invalidateFinalCategoriesCache(): void {
+    this.finalCategoriesCache = null;
+    this.detectedAppsHash = '';
   }
 
   /**
@@ -523,6 +545,8 @@ export class CategoryManager {
       // Save to JSON file
       if (this.saveUserSettings()) {
         log.info('CategoryManager: Custom category created successfully', { id, name });
+        // --- Invalidate cache on settings change ---
+        this.invalidateFinalCategoriesCache();
         return { success: true, id };
       } else {
         // Rollback in-memory changes if save failed
@@ -603,6 +627,8 @@ export class CategoryManager {
       // Save to JSON file
       if (this.saveUserSettings()) {
         log.info('CategoryManager: Custom category updated successfully', { id });
+        // --- Invalidate cache on settings change ---
+        this.invalidateFinalCategoriesCache();
         return true;
       } else {
         // Rollback in-memory changes if save failed
@@ -662,6 +688,8 @@ export class CategoryManager {
       // Save to JSON file
       if (this.saveUserSettings()) {
         log.info('CategoryManager: Custom category deleted successfully', { id });
+        // --- Invalidate cache on settings change ---
+        this.invalidateFinalCategoriesCache();
         return true;
       } else {
         // Rollback in-memory changes if save failed
@@ -723,6 +751,8 @@ export class CategoryManager {
       // Save to JSON file
       if (this.saveUserSettings()) {
         log.info('CategoryManager: App assigned to category successfully', { appName, categoryId });
+        // --- Invalidate cache on settings change ---
+        this.invalidateFinalCategoriesCache();
         return true;
       } else {
         // Rollback in-memory changes if save failed
@@ -773,6 +803,8 @@ export class CategoryManager {
       // Save to JSON file
       if (this.saveUserSettings()) {
         log.info('CategoryManager: App category assignment removed successfully', { appName });
+        // --- Invalidate cache on settings change ---
+        this.invalidateFinalCategoriesCache();
         return true;
       } else {
         // Rollback in-memory changes if save failed
@@ -833,6 +865,8 @@ export class CategoryManager {
       // Save to JSON file
       if (this.saveUserSettings()) {
         log.info('CategoryManager: Reset to defaults completed');
+        // --- Invalidate cache on settings change ---
+        this.invalidateFinalCategoriesCache();
         return true;
       } else {
         // Rollback in-memory changes if save failed
@@ -982,6 +1016,8 @@ export class CategoryManager {
       // Save to file
       if (this.saveUserSettings()) {
         log.info('CategoryManager: Settings imported successfully');
+        // --- Invalidate cache on settings change ---
+        this.invalidateFinalCategoriesCache();
         return true;
       } else {
         // Rollback on save failure
@@ -1181,10 +1217,12 @@ export class CategoryManager {
    * 5. Fallback to 'miscellaneous'
    * 
    * @param {string} itemName - The application name or domain to categorize
+   * @param {string} [domain] - (Optional) The domain for browser windows
+   * @param {boolean} [exactWord] - (Optional) If true, match keywords as whole words only
    * @returns {string} The category ID that the item would be assigned to
    */
-  public categorizeItem(itemName: string): string {
-    return this.categorizeSingleApp(itemName);
+  public categorizeItem(itemName: string, domain?: string, exactWord?: boolean): string {
+    return this.categorizeSingleApp(itemName, domain, exactWord);
   }
 }
 
