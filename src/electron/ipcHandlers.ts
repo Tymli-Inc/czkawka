@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow, app } from 'electron';
 import { getGroupedCategories, getCurrentActiveWindow, getActiveWindows, compileWindowData, getTrackingTimes, getIdleEvents, getIdleStatistics, getCurrentIdleStatus, setIdleThreshold, getTimelineStats, getDailyCategoryBreakdown, getTopAppsForDate, startActiveWindowTracking, stopActiveWindowTracking, toggleWindowTracking, getWindowTrackingStatus } from './windowTracking';
 import {clearUserToken, getLoginStatus, getUserToken, handleLogin, storeUserToken, getUserData} from './auth';
+import { checkUserInfoAvailable, storeUserInfoAPI, fetchUserInfoAPI, getUserInfoLocal } from './questionnaire';
 import { checkForUpdates, quitAndInstall, resetUpdateState, forceCheckForUpdates } from './autoUpdate';
 import CategoryManager from './categoryManager';
 import log from 'electron-log';
@@ -189,6 +190,23 @@ export function setupIpcHandlers() {
 
   ipcMain.handle('get-user-data', () => {
     return getUserData();
+  });
+
+  // Questionnaire handlers
+  ipcMain.handle('check-user-info-available', async (event, userId: string) => {
+    return await checkUserInfoAvailable(userId);
+  });
+
+  ipcMain.handle('store-user-info', async (event, userInfo: any) => {
+    return await storeUserInfoAPI(userInfo);
+  });
+
+  ipcMain.handle('fetch-user-info', async (event, userId: string) => {
+    return await fetchUserInfoAPI(userId);
+  });
+
+  ipcMain.handle('get-user-info-local', () => {
+    return getUserInfoLocal();
   });
 
   ipcMain.handle('window-minimize', () => {

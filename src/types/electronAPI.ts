@@ -243,4 +243,34 @@ export interface ElectronAPI {
     message: string;
     error?: string;
   }>;
+
+  // User management APIs
+  getUserId: () => Promise<string | null>;
+
+  // Questionnaire APIs
+  /** Check if user questionnaire info is available on server */
+  checkUserInfoAvailable: (userId: string) => Promise<{ available: boolean; success: boolean; error?: string }>;
+  /** Store user questionnaire info on server and locally */
+  storeUserInfo: (userInfo: {
+    userId: string;
+    name: string;
+    job_role: string;
+    referralSource: string;
+    work_type: string[];
+    team_mode: string;
+    daily_work_hours: string;
+    distraction_apps: string[];
+    distraction_content_types: string[];
+    distraction_time: string;
+    productivity_goal: string;
+    enforcement_preference: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+  /** Fetch user questionnaire info from server */
+  fetchUserInfo: (userId: string) => Promise<{ data: any; success: boolean; error?: string }>;
+  /** Get user questionnaire info from local storage */
+  getUserInfoLocal: () => Promise<any>;
+  /** Listen for show questionnaire events */
+  onShowQuestionnaire: (callback: (data: { userId: string; userName: string }) => void) => void;
+  /** Remove questionnaire event listeners */
+  removeQuestionnaireListener: () => void;
 }
