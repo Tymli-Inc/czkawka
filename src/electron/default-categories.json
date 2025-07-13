@@ -1,38 +1,71 @@
 {
-  "development": {
+  "admin": {
+    "description": "Administrative tools and system management applications",
+    "color": "#FF6B6B",
+    "keywords": [
+      "windows explorer", "explorer", "shell", "start", "search", "terminal",
+      "powershell", "cmd", "command prompt", "control panel", "settings",
+      "registry", "services", "msconfig", "taskbar", "cortana", "file explorer",
+      "nvidia", "amd", "intel", "driver", "gpu", "cpu", "monitoring", "hwinfo",
+      "msi afterburner", "gpu-z", "cpu-z", "speccy", "ccleaner", "malwarebytes",
+      "antivirus", "firewall"
+    ]
+  },
+  "break": {
+    "description": "Break time and relaxation activities",
+    "color": "#4ECDC4",
+    "keywords": [
+      "break", "rest", "pause", "meditation", "calm", "headspace", "relax"
+    ]
+  },
+  "browsing": {
+    "description": "Web browsers and internet browsing applications",
+    "color": "#D178F0",
+    "keywords": [
+      "chrome", "firefox", "safari", "edge", "brave", "opera", "vivaldi",
+      "tor", "zen", "waterfox", "pale moon", "seamonkey", "internet explorer"
+    ]
+  },
+  "code": {
     "description": "Development tools, IDEs, and programming-related applications",
     "color": "#A554E8",
     "keywords": [
       "visual studio code", "vscode", "electron", "openjdk", "java", "sqlite", "pgadmin",
       "intellij", "eclipse", "netbeans", "android studio", "xcode", "git", "github",
       "docker", "mongodb", "mysql", "postgresql", "redis", "node", "npm", "yarn",
-      "webpack", "babel", "eslint", "prettier", "typescript", "react", "angular", "vue","localhost"
+      "webpack", "babel", "eslint", "prettier", "typescript", "react", "angular", "vue", "localhost"
     ]
   },
-  "work": {
-    "description": "Office suites, task managers, and productivity tools for work",
-    "color": "#877DFF",
+  "customer_support": {
+    "description": "Customer support and help desk applications",
+    "color": "#45B7D1",
     "keywords": [
-      "hourglass", "microsoft office", "word", "excel", "powerpoint", "outlook",
-      "onedrive", "google drive", "dropbox", "notepad", "notion", "evernote",
-      "trello", "asana", "monday", "clickup", "todoist", "any.do", "rescuetime",
-      "toggl", "clockify", "harvest", "timely", "sharex", "greenshot", "snagit"
+      "zendesk", "freshdesk", "intercom", "salesforce service cloud", "helpdesk",
+      "support", "customer service", "ticketing", "livechat", "chat support"
     ]
   },
-  "communication": {
-    "description": "Professional communication tools like Slack, Zoom, and Teams",
-    "color": "#FFCB6B",
+  "design": {
+    "description": "Design tools and creative applications",
+    "color": "#FFD166",
     "keywords": [
-      "slack", "teams", "zoom", "skype", "webex", "gotomeeting",
-      "whatsapp", "signal", "messenger", "viber", "line", "wechat"
+      "photoshop", "illustrator", "indesign", "figma", "sketch", "canva", "adobe xd",
+      "affinity designer", "affinity photo", "gimp", "inkscape", "procreate"
     ]
   },
-  "social": {
-    "description": "Social media and messaging applications for casual communication",
-    "color": "#FF9CF5",
+  "documenting": {
+    "description": "Documentation and note-taking applications",
+    "color": "#98D8C8",
     "keywords": [
-      "facebook", "twitter", "instagram", "tiktok", "snapchat", "linkedin",
-      "reddit", "pinterest", "youtube", "twitch", "discord", "telegram"
+      "notion", "evernote", "onenote", "obsidian", "roam research", "confluence",
+      "wiki", "documentation", "notes", "markdown", "gitbook", "bookstack"
+    ]
+  },
+  "email": {
+    "description": "Email clients and communication applications",
+    "color": "#F06292",
+    "keywords": [
+      "outlook", "gmail", "thunderbird", "apple mail", "spark", "airmail",
+      "mailbird", "postbox", "email", "mail"
     ]
   },
   "entertainment": {
@@ -41,16 +74,32 @@
     "keywords": [
       "steam", "teardown", "minecraft", "plex", "spotify", "netflix",
       "xbox", "playstation", "nintendo", "epic", "origin",
-      "uplay", "gog", "vlc", "media player", "itunes", "winamp", "foobar"
+      "uplay", "gog", "vlc", "media player", "itunes", "winamp", "foobar",
+      "youtube", "twitch", "hulu", "disney plus", "amazon prime"
     ]
   },
-  "creative": {
-    "description": "Tools for design, editing, streaming, and content creation",
-    "color": "#FFD166",
+  "finance": {
+    "description": "Financial management and accounting applications",
+    "color": "#81C784",
     "keywords": [
-      "obs", "streamlabs", "audacity", "gimp", "photoshop", "premiere", "after effects",
-      "illustrator", "indesign", "figma", "sketch", "canva", "blender", "unity",
-      "unreal", "davinci resolve", "final cut", "logic pro", "ableton", "fl studio"
+      "quickbooks", "mint", "ynab", "personal capital", "excel", "accounting",
+      "finance", "budget", "expense", "banking", "investment", "tax", "payroll"
+    ]
+  },
+  "hiring": {
+    "description": "Recruitment and hiring management tools",
+    "color": "#FF8A65",
+    "keywords": [
+      "linkedin recruiter", "indeed", "glassdoor", "workday", "bamboohr",
+      "greenhouse", "lever", "recruiting", "hr", "applicant tracking"
+    ]
+  },
+  "in_person_meeting": {
+    "description": "In-person meeting and conference room applications",
+    "color": "#BA68C8",
+    "keywords": [
+      "calendar", "scheduling", "room booking", "conference room", "meeting room",
+      "calendly", "doodle", "when2meet", "outlook calendar"
     ]
   },
   "learning": {
@@ -58,39 +107,123 @@
     "color": "#06D6A0",
     "keywords": [
       "coursera", "udemy", "khan academy", "edx", "brilliant", "duolingo", "udacity",
-      "medium", "wikipedia", "obsidian"
+      "medium", "wikipedia", "pluralsight", "linkedin learning", "skillshare"
     ]
   },
-  "browsers": {
-    "description": "Web browsers and related apps",
-    "color": "#D178F0",
+  "marketing_messaging": {
+    "description": "Marketing and messaging tools",
+    "color": "#FF7043",
     "keywords": [
-      "chrome", "firefox", "safari", "edge", "brave", "opera", "vivaldi",
-      "tor", "zen", "waterfox", "pale moon", "seamonkey", "internet explorer"
-    ]
-  },
-  "utilities": {
-    "description": "System and hardware-related tools, file transfer utilities",
-    "color": "#B494E8",
-    "keywords": [
-      "nvidia", "amd", "intel", "driver", "gpu", "cpu", "monitoring", "hwinfo",
-      "msi afterburner", "gpu-z", "cpu-z", "speccy", "ccleaner", "malwarebytes",
-      "antivirus", "firewall", "winrar", "7zip", "utorrent", "bittorrent",
-      "remote desktop", "teamviewer", "anydesk", "vnc", "putty", "filezilla"
-    ]
-  },
-  "system": {
-    "description": "Operating system and native Windows components",
-    "color": "#9BA8FF",
-    "keywords": [
-      "windows explorer", "explorer", "shell", "start", "search", "terminal",
-      "powershell", "cmd", "command prompt", "control panel", "settings",
-      "registry", "services", "msconfig", "taskbar", "cortana", "file explorer"
+      "mailchimp", "hubspot", "marketo", "constant contact", "sendgrid",
+      "marketing", "campaigns", "email marketing", "social media marketing"
     ]
   },
   "miscellaneous": {
     "description": "Uncategorized or unknown applications",
     "color": "#808080",
     "keywords": []
+  },
+  "personal": {
+    "description": "Personal applications and activities",
+    "color": "#FFB74D",
+    "keywords": [
+      "personal", "family", "photos", "music", "hobbies", "lifestyle",
+      "health", "fitness", "diary", "journal"
+    ]
+  },
+  "product": {
+    "description": "Product management and development tools",
+    "color": "#9575CD",
+    "keywords": [
+      "jira", "confluence", "asana", "monday", "productboard", "aha",
+      "roadmap", "product management", "backlog", "user stories"
+    ]
+  },
+  "productivity": {
+    "description": "Productivity tools and applications",
+    "color": "#877DFF",
+    "keywords": [
+      "hourglass", "microsoft office", "word", "excel", "powerpoint",
+      "onedrive", "google drive", "dropbox", "notepad", "rescuetime",
+      "toggl", "clockify", "harvest", "timely", "sharex", "greenshot", "snagit"
+    ]
+  },
+  "research": {
+    "description": "Research tools and reference applications",
+    "color": "#4FC3F7",
+    "keywords": [
+      "google scholar", "mendeley", "zotero", "research", "references",
+      "bibliography", "academic", "papers", "journals", "pubmed"
+    ]
+  },
+  "sales": {
+    "description": "Sales and CRM applications",
+    "color": "#AED581",
+    "keywords": [
+      "salesforce", "hubspot crm", "pipedrive", "zoho crm", "crm",
+      "sales", "leads", "prospects", "deals", "pipeline"
+    ]
+  },
+  "shopping": {
+    "description": "Shopping and e-commerce applications",
+    "color": "#F8BBD9",
+    "keywords": [
+      "amazon", "ebay", "shopify", "etsy", "walmart", "target",
+      "shopping", "e-commerce", "online store", "retail"
+    ]
+  },
+  "social_media": {
+    "description": "Social media platforms and applications",
+    "color": "#FF9CF5",
+    "keywords": [
+      "facebook", "twitter", "instagram", "tiktok", "snapchat", "linkedin",
+      "reddit", "pinterest", "discord", "telegram", "whatsapp", "signal"
+    ]
+  },
+  "task_management": {
+    "description": "Task and project management applications",
+    "color": "#66BB6A",
+    "keywords": [
+      "trello", "asana", "monday", "clickup", "todoist", "any.do",
+      "notion", "basecamp", "wrike", "smartsheet", "tasks", "todo"
+    ]
+  },
+  "uncategorized": {
+    "description": "Applications that don't fit into other categories",
+    "color": "#9E9E9E",
+    "keywords": []
+  },
+  "utility": {
+    "description": "System utilities and helper applications",
+    "color": "#B494E8",
+    "keywords": [
+      "winrar", "7zip", "utorrent", "bittorrent", "remote desktop",
+      "teamviewer", "anydesk", "vnc", "putty", "filezilla", "utility",
+      "tools", "helper", "system tools"
+    ]
+  },
+  "video_conferencing": {
+    "description": "Video conferencing and online meeting tools",
+    "color": "#FFCB6B",
+    "keywords": [
+      "zoom", "teams", "skype", "webex", "gotomeeting", "google meet",
+      "bluejeans", "cisco webex", "video call", "conference", "meeting"
+    ]
+  },
+  "workout": {
+    "description": "Fitness and workout applications",
+    "color": "#E57373",
+    "keywords": [
+      "fitness", "workout", "exercise", "gym", "training", "health",
+      "myfitnesspal", "strava", "fitbit", "nike training", "peloton"
+    ]
+  },
+  "writing": {
+    "description": "Writing and content creation tools",
+    "color": "#A1C181",
+    "keywords": [
+      "word", "google docs", "grammarly", "scrivener", "ulysses", "bear",
+      "writing", "editor", "text", "content", "blog", "article"
+    ]
   }
 }
