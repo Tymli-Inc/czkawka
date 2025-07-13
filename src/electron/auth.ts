@@ -6,6 +6,7 @@ import Store from 'electron-store';
 import log from "electron-log";
 import {startActiveWindowTracking, stopActiveWindowTracking} from "./windowTracking";
 import { initializeDatabase } from './database';
+import { handleQuestionnaire } from './questionnaire';
 import type { UserData } from '../types/electronAPI';
 
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string;
@@ -63,13 +64,10 @@ export async function setupDeepLinkHandlers(mainWindow: BrowserWindow | null) {
     await mainWindow.loadFile(path.join(app.getAppPath(), 'login.html'));
     mainWindow.webContents.send('auth-logout');
   } else {
-    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-      mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    } else {
-      mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
-    }
+    // Check questionnaire flow
+    const { userData } = getUserToken();
+    await handleQuestionnaire(mainWindow, userData?.id, userData?.name || userData?.email || 'User');
   }
-
 
   app.on('second-instance', (event, argv) => {
     log.info('Second-instance event:', argv);
@@ -99,38 +97,38 @@ function handleDeepLink(urlStr: string, mainWindow: BrowserWindow | null) {
     log.info('Received deep link URL:', urlStr);
     
     if (code) {
-      const { net } = require('electron');
-      
-      const authUrl = app.isPackaged 
-        ? 'https://hourglass-auth.vercel.app/auth/token'
-        : 'http://localhost:3000/auth/token';
-      
-      const request = net.request({
-        method: 'POST',
-        url: authUrl,
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      request.on('response', (response: IncomingMessage) => {
-        let body = '';
-        response.on('data', (chunk: Buffer) => {
-          body += chunk.toString();
+      import('electron').then(({ net }) => {
+        const authUrl = app.isPackaged 
+          ? 'https://hourglass-auth.vercel.app/auth/token'
+          : 'http://localhost:3000/auth/token';
+        
+        const request = net.request({
+          method: 'POST',
+          url: authUrl,
+          headers: { 'Content-Type': 'application/json' }
         });
-        response.on('end', () => {
-          const userData: {
-            [key: string]: any;
-          } = JSON.parse(body);
-          log.info('Received user data from token endpoint:', userData);
-          if (mainWindow && userData.token) {
-            mainWindow.webContents.send('auth-success', userData);
-          } else {
-            mainWindow.webContents.send('auth-fail');
-          }
-        });
-      });
       
-      request.write(JSON.stringify({ code, redirect_uri: 'hourglass://' }));
-      request.end();
+        request.on('response', (response: Electron.IncomingMessage) => {
+          let body = '';
+          response.on('data', (chunk: Buffer) => {
+            body += chunk.toString();
+          });
+          response.on('end', () => {
+            const userData: {
+              [key: string]: any;
+            } = JSON.parse(body);
+            log.info('Received user data from token endpoint:', userData);
+            if (mainWindow && userData.token) {
+              mainWindow.webContents.send('auth-success', userData);
+            } else {
+              mainWindow.webContents.send('auth-fail');
+            }
+          });
+        });
+        
+        request.write(JSON.stringify({ code, redirect_uri: 'hourglass://' }));
+        request.end();
+      });
     }
   } catch (err) {
     log.error('Failed to handle deep link', err);
@@ -187,7 +185,7 @@ export async function storeUserToken(userData: UserData) {
       email: fetchedUserData?.data?.email || userData.email,
       name: fetchedUserData?.data?.name || userData.name,
       picture: fetchedUserData?.data?.picture || userData.picture,
-      // Include any additional data from API if available
+      id: fetchedUserData?.data?.id || userData.id,
       ...(fetchedUserData?.data || {})
     };
     
@@ -197,12 +195,10 @@ export async function storeUserToken(userData: UserData) {
     log.info('User data stored successfully');
     log.info('Store contents after saving:', store.store);
     startActiveWindowTracking()
-    if (MAIN_WINDOW_VITE_DEV_SERVER_URL!==undefined && MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-      mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
-    } else {
-      const prodPath = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`);
-      mainWindow.loadFile(prodPath);
-    }
+
+    // checking for questionnaire
+    await handleQuestionnaire(mainWindow, userData.id, userData.name || userData.email || 'User');
+    
     return { success: true };
   } catch (error: any) {
     log.error('Failed to store user data:', error);

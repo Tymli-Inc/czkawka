@@ -181,4 +181,96 @@ export interface ElectronAPI {
   // App info APIs
   /** Get the current application version */
   getAppVersion: () => Promise<string>;
+
+  // Category management APIs
+  /** Get all app categories with user customizations applied */
+  getAppCategories: () => Promise<{
+    success: boolean;
+    data?: {
+      detectedApps: string[];
+      categories: { [key: string]: { description: string; color: string; apps: string[]; isCustom?: boolean } };
+    };
+    error?: string;
+  }>;
+  /** Get all detected apps from the database */
+  getDetectedApps: () => Promise<{
+    success: boolean;
+    data?: string[];
+    error?: string;
+  }>;
+  /** Get user category settings (custom categories and app overrides) */
+  getUserCategorySettings: () => Promise<{
+    success: boolean;
+    data?: {
+      customCategories: { [key: string]: { description: string; color: string; apps: string[]; isCustom?: boolean } };
+      appCategoryOverrides: { [appName: string]: string };
+    };
+    error?: string;
+  }>;
+  /** Create a new custom category */
+  createCustomCategory: (name: string, description: string, color: string) => Promise<{
+    success: boolean;
+    id?: string;
+    error?: string;
+  }>;
+  /** Update an existing custom category */
+  updateCustomCategory: (id: string, name: string, description: string, color: string) => Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }>;
+  /** Delete a custom category */
+  deleteCustomCategory: (id: string) => Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }>;
+  /** Assign an app to a specific category */
+  assignAppToCategory: (appName: string, categoryId: string) => Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }>;
+  /** Remove app category assignment (will fall back to default) */
+  removeAppCategoryAssignment: (appName: string) => Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }>;
+  /** Reset all categories to defaults */
+  resetCategoriesToDefaults: () => Promise<{
+    success: boolean;
+    message: string;
+    error?: string;
+  }>;
+
+  // User management APIs
+  getUserId: () => Promise<string | null>;
+
+  // Questionnaire APIs
+  /** Check if user questionnaire info is available on server */
+  checkUserInfoAvailable: (userId: string) => Promise<{ available: boolean; success: boolean; error?: string }>;
+  /** Store user questionnaire info on server and locally */
+  storeUserInfo: (userInfo: {
+    userId: string;
+    name: string;
+    job_role: string;
+    referralSource: string;
+    work_type: string[];
+    team_mode: string;
+    daily_work_hours: string;
+    distraction_apps: string[];
+    distraction_content_types: string[];
+    distraction_time: string;
+    productivity_goal: string;
+    enforcement_preference: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+  /** Fetch user questionnaire info from server */
+  fetchUserInfo: (userId: string) => Promise<{ data: any; success: boolean; error?: string }>;
+  /** Get user questionnaire info from local storage */
+  getUserInfoLocal: () => Promise<any>;
+  /** Listen for show questionnaire events */
+  onShowQuestionnaire: (callback: (data: { userId: string; userName: string }) => void) => void;
+  /** Remove questionnaire event listeners */
+  removeQuestionnaireListener: () => void;
 }

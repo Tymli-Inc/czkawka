@@ -6,6 +6,7 @@ import hourglassLogo from '../../../assets/icons/hourglass.png';
 const TopBar = () => {
   const [isMaximized, setIsMaximized] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [userInfo, setUserInfo] = useState<any>(null);
   const [appVersion, setAppVersion] = useState<string>('');
   const location = useLocation();
   
@@ -58,6 +59,12 @@ const TopBar = () => {
       if (isLoggedIn && userData) {
         setUser(userData);
       }
+      
+      // Load questionnaire data
+      const questionnaireData = await window.electronAPI.getUserInfoLocal();
+      if (questionnaireData) {
+        setUserInfo(questionnaireData);
+      }
     } catch (err) {}
   };
   useEffect(() => {
@@ -88,7 +95,7 @@ const TopBar = () => {
         {user ? (
           <div className={styles.userInfo}>
             <img src={user.image || hourglassLogo} alt="User Avatar" className={styles.userAvatar} />
-            <p>{user.name}</p>
+            <p>{userInfo?.name || user.name}</p>
           </div>
         ) : (
           <button onClick={window.electronAPI?.login}>Login</button>

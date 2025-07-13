@@ -55,6 +55,13 @@ interface ElectronAPI {
   removeUpdateListener: () => void;
   // App info APIs
   getAppVersion: () => Promise<string>;
+  // Questionnaire APIs
+  checkUserInfoAvailable: (userId: string) => Promise<{ available: boolean; success: boolean; error?: string }>;
+  storeUserInfo: (userInfo: any) => Promise<{ success: boolean; error?: string }>;
+  fetchUserInfo: (userId: string) => Promise<{ data: any; success: boolean; error?: string }>;
+  getUserInfoLocal: () => Promise<any>;
+  onShowQuestionnaire: (callback: (data: { userId: string; userName: string }) => void) => void;
+  removeQuestionnaireListener: () => void;
 };
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -210,5 +217,67 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App info APIs
   getAppVersion: async (): Promise<string> => {
     return await ipcRenderer.invoke('get-app-version');
+  },
+
+  // Category management APIs
+  getAppCategories: async () => {
+    return await ipcRenderer.invoke('get-app-categories');
+  },
+
+  getDetectedApps: async () => {
+    return await ipcRenderer.invoke('get-detected-apps');
+  },
+
+  getUserCategorySettings: async () => {
+    return await ipcRenderer.invoke('get-user-category-settings');
+  },
+
+  createCustomCategory: async (name: string, description: string, color: string) => {
+    return await ipcRenderer.invoke('create-custom-category', name, description, color);
+  },
+
+  updateCustomCategory: async (id: string, name: string, description: string, color: string) => {
+    return await ipcRenderer.invoke('update-custom-category', id, name, description, color);
+  },
+
+  deleteCustomCategory: async (id: string) => {
+    return await ipcRenderer.invoke('delete-custom-category', id);
+  },
+
+  assignAppToCategory: async (appName: string, categoryId: string) => {
+    return await ipcRenderer.invoke('assign-app-to-category', appName, categoryId);
+  },
+
+  removeAppCategoryAssignment: async (appName: string) => {
+    return await ipcRenderer.invoke('remove-app-category-assignment', appName);
+  },
+
+  resetCategoriesToDefaults: async () => {
+    return await ipcRenderer.invoke('reset-categories-to-defaults');
+  },
+
+  // Questionnaire APIs
+  checkUserInfoAvailable: async (userId: string) => {
+    return await ipcRenderer.invoke('check-user-info-available', userId);
+  },
+
+  storeUserInfo: async (userInfo: any) => {
+    return await ipcRenderer.invoke('store-user-info', userInfo);
+  },
+
+  fetchUserInfo: async (userId: string) => {
+    return await ipcRenderer.invoke('fetch-user-info', userId);
+  },
+
+  getUserInfoLocal: async () => {
+    return await ipcRenderer.invoke('get-user-info-local');
+  },
+
+  onShowQuestionnaire: (callback: (data: { userId: string; userName: string }) => void) => {
+    ipcRenderer.on('show-questionnaire', (_, data) => callback(data));
+  },
+
+  removeQuestionnaireListener: () => {
+    ipcRenderer.removeAllListeners('show-questionnaire');
   }
 } as ElectronAPI);
