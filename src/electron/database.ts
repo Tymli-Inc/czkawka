@@ -76,7 +76,9 @@ export function initializeDatabase(): boolean {
         timestamp INTEGER,
         session_length INTEGER DEFAULT 0
       )
-    `).run();    db.prepare(`
+    `).run();    
+    
+    db.prepare(`
      CREATE TABLE IF NOT EXISTS tracking_times (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_start INTEGER DEFAULT 0, 
@@ -94,6 +96,116 @@ export function initializeDatabase(): boolean {
       )
     `).run();
 
+    // Focus mode tables with proper migration logic
+    try {
+      // Check if focus_sessions table exists and has the required columns
+      const focusSessionsTableInfo = db.prepare("PRAGMA table_info(focus_sessions)").all();
+      const hasJobRoleColumn = focusSessionsTableInfo.some((col: any) => col.name === 'job_role');
+      const hasTitleColumn = focusSessionsTableInfo.some((col: any) => col.name === 'title');
+      
+      if (focusSessionsTableInfo.length > 0 && (!hasJobRoleColumn || !hasTitleColumn)) {
+        // Table exists but missing required columns, recreate it
+        log.info('Focus mode tables exist but are missing required columns, recreating...');
+        db.prepare('DROP TABLE IF EXISTS focus_sessions').run();
+        db.prepare('DROP TABLE IF EXISTS focus_settings').run();
+        db.prepare('DROP TABLE IF EXISTS focus_distractions').run();
+      }
+
+      // Create focus_sessions table
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS focus_sessions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          start_time INTEGER NOT NULL,
+          end_time INTEGER,
+          duration INTEGER NOT NULL,
+          job_role TEXT NOT NULL,
+          title TEXT,
+          is_active BOOLEAN DEFAULT 1,
+          distraction_count INTEGER DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run();
+
+      // Create focus_settings table
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS focus_settings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          duration INTEGER DEFAULT 45,
+          is_enabled BOOLEAN DEFAULT 0,
+          show_distraction_popup BOOLEAN DEFAULT 1,
+          auto_break_reminder BOOLEAN DEFAULT 1,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `).run();
+
+      // Create focus_distractions table
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS focus_distractions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id INTEGER,
+          app_name TEXT NOT NULL,
+          category TEXT NOT NULL,
+          timestamp INTEGER NOT NULL,
+          duration INTEGER DEFAULT 0,
+          FOREIGN KEY (session_id) REFERENCES focus_sessions (id)
+        )
+      `).run();
+
+      log.info('Focus mode database tables created successfully');
+    } catch (error) {
+      log.error('Error creating focus mode tables:', error);
+      
+      // If there's still an error, force recreate all tables
+      try {
+        log.info('Force recreating focus mode tables...');
+        db.prepare('DROP TABLE IF EXISTS focus_distractions').run();
+        db.prepare('DROP TABLE IF EXISTS focus_sessions').run();
+        db.prepare('DROP TABLE IF EXISTS focus_settings').run();
+        
+        // Recreate tables with correct schema
+        db.prepare(`
+          CREATE TABLE focus_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            start_time INTEGER NOT NULL,
+            end_time INTEGER,
+            duration INTEGER NOT NULL,
+            job_role TEXT NOT NULL,
+            title TEXT,
+            is_active BOOLEAN DEFAULT 1,
+            distraction_count INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run();
+
+        db.prepare(`
+          CREATE TABLE focus_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            duration INTEGER DEFAULT 45,
+            is_enabled BOOLEAN DEFAULT 0,
+            show_distraction_popup BOOLEAN DEFAULT 1,
+            auto_break_reminder BOOLEAN DEFAULT 1,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `).run();
+
+        db.prepare(`
+          CREATE TABLE focus_distractions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER,
+            app_name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            timestamp INTEGER NOT NULL,
+            duration INTEGER DEFAULT 0,
+            FOREIGN KEY (session_id) REFERENCES focus_sessions (id)
+          )
+        `).run();
+
+        log.info('Focus mode tables force recreated successfully');
+      } catch (recreateError) {
+        log.error('Failed to recreate focus mode tables:', recreateError);
+      }
+    }
+    
     const lastActiveWindow = db.prepare('SELECT timestamp FROM active_windows ORDER BY timestamp DESC LIMIT 1').get();
     if (lastActiveWindow && lastActiveWindow.timestamp) {
       db.prepare('UPDATE tracking_times SET session_end = ? WHERE session_end = 0').run(lastActiveWindow.timestamp);

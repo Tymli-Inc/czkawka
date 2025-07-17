@@ -1,25 +1,11 @@
 import { IoMdArrowDropdown, IoMdArrowDropup } from "react-icons/io";
-import styles from "./timeline-new.module.css"; 
-import React, { use, useEffect, useMemo, useRef, useState } from "react";
+import styles from "../timeline-new/timeline-new.module.css"; 
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { ElectronAPI } from "src/types/electronAPI";
 import { FaTimeline } from "react-icons/fa6";
 
-// Function to calculate brightness of a color
-function getBrightness(color: string): number {
-  // Remove # if present
-  const hex = color.replace('#', '');
-  
-  // Convert to RGB
-  const r = parseInt(hex.substr(0, 2), 16);
-  const g = parseInt(hex.substr(2, 2), 16);
-  const b = parseInt(hex.substr(4, 2), 16);
-  
-  // Calculate brightness using the formula: (R * 299 + G * 587 + B * 114) / 1000
-  return (r * 299 + g * 587 + b * 114) / 1000;
-}
-interface TimelineProps {
+interface FocusTimelineProps {
   selectedDate: Date;
-  onDateNavigate: (direction: 'prev' | 'next') => void;
   initialScalingFactor?: number;
   initialScrollerPosition?: number;
   onTimelineReady?: (methods: { moveToTime: (hour: number, minute?: number) => void }) => void;
@@ -29,13 +15,12 @@ interface window {
   electronAPI: ElectronAPI;
 }
 
-export default function TimelineNew({ 
+export default function FocusTimeline({ 
   selectedDate, 
-  onDateNavigate,
   initialScalingFactor,
   initialScrollerPosition,
   onTimelineReady
-}: TimelineProps): React.JSX.Element {
+}: FocusTimelineProps): React.JSX.Element {
 
   //calculation constants
   const dayInEpoch = 24 * 60 * 60 * 1000; 
@@ -56,12 +41,11 @@ export default function TimelineNew({
   const [dragStart, setDragStart] = useState({ y: 0, startPos: 0, startHeight: 0 });
   
   const [scalingFactor, setScalingFactor] = useState(initialScalingFactor);
-  const [scrollerPosition, setScrollerPosition] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [groupedData, setGroupedData] = useState<any[]>([]);
+  const [focusGroupedData, setFocusGroupedData] = useState<any[]>([]);
 
   const dayStart = useMemo(() => {
     const start = new Date(selectedDate);
@@ -74,15 +58,120 @@ export default function TimelineNew({
     return end;
   }, [selectedDate]);
 
-
-
-  //fetch data from getGroupedCategories
+  //fetch focus mode data and transform it to match timeline format
   useEffect(() => {
-    window.electronAPI.getGroupedCategories(Number(dayStart)).then((categories: any) => {
-      setGroupedData(categories.data);
-      console.log(categories.data)
-    });
-  }, [dayStart]);
+    const fetchFocusData = async () => {
+      try {
+        const response = await window.electronAPI.getFocusModeHistory(1);
+        
+        if (response.success && response.data) {
+          console.log('Focus timeline raw data:', response.data);
+          
+          // Filter sessions for the selected date
+          const sessionsForDate = response.data.filter((session: any) => {
+            const sessionDate = new Date(session.startTime);
+            return sessionDate.toDateString() === selectedDate.toDateString();
+          });
+          
+          console.log('Sessions for date:', sessionsForDate);
+          console.log('Selected date:', selectedDate.toDateString());
+          
+          // Transform focus sessions to match timeline data structure
+          const transformedData = sessionsForDate.map((session: any) => {
+            const sessionTitle = session.title 
+              ? session.title 
+              : `${session.jobRole} Focus Session`;
+            
+            const sessionLength = session.endTime ? session.endTime - session.startTime : session.duration;
+            const sessionStart = session.startTime;
+            const sessionEnd = session.endTime || (session.startTime + session.duration);
+            
+            return {
+              categories: [{
+                name: 'focus_mode',
+                color: '#877DFF'
+              }],
+              appData: [{
+                title: sessionTitle,
+                session_length: sessionLength,
+                category: 'focus_mode'
+              }],
+              session_length: sessionLength,
+              session_start: sessionStart,
+              session_end: sessionEnd
+            };
+          });
+          
+          setFocusGroupedData(transformedData);
+          console.log('Focus timeline data:', transformedData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch focus timeline data:', error);
+      }
+    };
+
+    fetchFocusData();
+  }, [selectedDate]);
+
+  // Listen for focus mode events to refresh timeline
+  useEffect(() => {
+    const handleFocusUpdate = () => {
+      const fetchFocusData = async () => {
+        try {
+          const response = await window.electronAPI.getFocusModeHistory(1);
+          
+          if (response.success && response.data) {
+            console.log('Focus timeline event update raw data:', response.data);
+            
+            const sessionsForDate = response.data.filter((session: any) => {
+              const sessionDate = new Date(session.startTime);
+              return sessionDate.toDateString() === selectedDate.toDateString();
+            });
+            
+            console.log('Event update sessions for date:', sessionsForDate);
+            
+            const transformedData = sessionsForDate.map((session: any) => {
+              const sessionTitle = session.title 
+                ? session.title 
+                : `${session.jobRole} Focus Session`;
+              
+              const sessionLength = session.endTime ? session.endTime - session.startTime : session.duration;
+              const sessionStart = session.startTime;
+              const sessionEnd = session.endTime || (session.startTime + session.duration);
+              
+              return {
+                categories: [{
+                  name: 'focus_mode',
+                  color: '#877DFF'
+                }],
+                appData: [{
+                  title: sessionTitle,
+                  session_length: sessionLength,
+                  category: 'focus_mode'
+                }],
+                session_length: sessionLength,
+                session_start: sessionStart,
+                session_end: sessionEnd
+              };
+            });
+            
+            setFocusGroupedData(transformedData);
+          }
+        } catch (error) {
+          console.error('Failed to fetch focus timeline data:', error);
+        }
+      };
+
+      fetchFocusData();
+    };
+
+    window.electronAPI.onFocusModeStarted?.(handleFocusUpdate);
+    window.electronAPI.onFocusModeEnded?.(handleFocusUpdate);
+
+    return () => {
+      window.electronAPI.removeFocusModeListeners?.();
+    };
+  }, [selectedDate]);
 
   // Update current time every minute
   useEffect(() => {
@@ -148,25 +237,17 @@ export default function TimelineNew({
         if (selectedDate.toDateString() === new Date().toDateString()) {
           const currentTimePos = getCurrentTimePosition();
           const targetPixelPos = currentTimePos * timelineHeight;
-          initialPos = Math.max(0, Math.min(targetPixelPos - height / 2, timelineHeight - height));
+          initialPos = Math.max(0,1);
         }
       }
       
       setPosition(initialPos);
-      setScrollerPosition(initialPos);
     }
   }, [timelineHeight, isInitialized, initialScrollerPosition, height, selectedDate]);
 
   useEffect(() => {
     console.log("scaling factor changed:", scalingFactor);
   }, [scalingFactor]);
-
-  // Sync scroller position with timeline position
-  useEffect(() => {
-    if (isInitialized) {
-      setScrollerPosition(position);
-    }
-  }, [position, isInitialized]);
 
   // Set initial height based on desired scaling factor (only once)
   useEffect(() => {
@@ -369,13 +450,7 @@ export default function TimelineNew({
       </span>
       <div className={styles.dataRailHeaderContainer}>
           <div className={styles.dataRailHeader}>
-            Categories
-          </div>
-          <div className={styles.dataRailHeader}>
-            Calendar
-          </div>
-          <div className={styles.dataRailHeader}>
-            Projects
+            Focus Sessions
           </div>
       </div>
     </div>
@@ -386,33 +461,42 @@ export default function TimelineNew({
         flex: 1,
         position: 'relative',
       }}>
+        {/* Time labels and hour lines */}
         <div style={{
-          gap: (timelineHeight * scalingFactor)/24.4,
-          top: -(scrollerPosition * scalingFactor) + 'px',
-        }} className={styles.timeStops}>
-          {/* Generate time stops from 00:00 to 23:59 in 1 hour intervals */}
-          {Array.from({ length: 24 }, (_, i) => {
-            const hour = String(i).padStart(2, '0');
-            return (
-              <div key={i} style={{
-                left: '0px',
-                width: '100%',
-                height: '1px',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+          position: 'absolute',
+          top: `${-(position * scalingFactor)}px`,
+          left: 0,
+          width: '100%',
+          height: `${timelineHeight * scalingFactor}px`,
+          display: 'flex',
+          flexDirection: 'column',
+        }}>
+          {Array.from({ length: 25 }, (_, i) => (
+            <div key={i} style={{
+              display: 'flex',
+              alignItems: 'center',
+              position: 'absolute',
+              top: `${(i / 24) * timelineHeight * scalingFactor}px`,
+              width: '100%',
+            }}>
+              {/* Time label */}
+              <div style={{
+                fontSize: '10px',
+                color: 'rgba(255, 255, 255, 0.6)',
+                textAlign: 'right',
+                width: '40px',
+                marginRight: '10px',
               }}>
-                <span style={{
-                  position: 'absolute',
-                  left: '-50px',
-                  fontSize: '12px',
-                  color: 'rgba(255, 255, 255, 0.6)',
-                  width: '40px',
-                  textAlign: 'right',
-                }}>
-                  {hour}:00
-                </span>
+                {i === 24 ? '24:00' : `${String(i).padStart(2, '0')}:00`}
               </div>
-            );
-          })}
+              {/* Hour line */}
+              <div style={{
+                flex: 1,
+                height: '1px',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              }} />
+            </div>
+          ))}
         </div>
 
         {/* Current time indicator - only show if viewing today */}
@@ -422,72 +506,69 @@ export default function TimelineNew({
             <div 
               style={{
                 position: 'absolute',
-                top: `${(currentTimePos * timelineHeight * scalingFactor) - (scrollerPosition * scalingFactor)}px`,
-                left: '0px',
-                width: '100%',
+                top: `${(currentTimePos * timelineHeight * scalingFactor) - (position * scalingFactor)}px`,
+                left: '50px',
+                right: '0',
                 height: '2px',
                 backgroundColor: '#ff4444',
-                zIndex: 100,
-                boxShadow: '0 0 8px rgba(255, 68, 68, 0.6)',
+                zIndex: 5,
+                boxShadow: '0 0 4px rgba(255, 68, 68, 0.5)',
               }}
-            >
-              <div style={{
-                position: 'absolute',
-                left: '-6px',
-                top: '-3px',
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: '#ff4444',
-                boxShadow: '0 0 6px rgba(255, 68, 68, 0.8)',
-              }} />
-            </div>
+            />
           );
         })()}
 
+        {/* Focus mode sessions */}
         <div style={{
-          top: -(scrollerPosition * scalingFactor) + 'px',
+          position: 'absolute',
+          top: `${-(position * scalingFactor)}px`,
+          left: '60px',
+          right: '10px',
           height: `${timelineHeight * scalingFactor}px`,
-        }} className={styles.dataRails}>
-          <div className={styles.groupedDataRail}>
-            {/* Render grouped data categories */}
-            {groupedData.map((category, index) => (
-              <div style={{
-                height: `${(category.session_length/dayInEpoch)*100}%`,
-                top: `${((category.session_end - category.session_length - Number(dayStart))/dayInEpoch)*100}%`
-              }} key={index} className={styles.categoryItem}>
-                <div className={styles.categoryTags}>
-                  {
-                    category.categories
-                      .sort((a: { name: string }, b: { name: string }) => {
-                        if (a.name.toLowerCase() === 'uncategorized') return 1;
-                        if (b.name.toLowerCase() === 'uncategorized') return -1;
-                        return a.name.localeCompare(b.name);
-                      })
-                      .map((e: {
-                        name: string,
-                        color: string
-                      }) => <span
-                        style={{
-                          background: e.color,
-                          color: getBrightness(e.color) > 128 ? '#000000' : '#ffffff',
-                        }}
-                        key={e.name}
-                        className={styles.categoryTag}
-                      >
-                        {e.name}
-                      </span>)
-                  }
-                </div>
+        }}>
+          {focusGroupedData.map((session, index) => {
+            const sessionStart = new Date(session.session_start);
+            const sessionEnd = new Date(session.session_end);
+            
+            const startMinutes = sessionStart.getHours() * 60 + sessionStart.getMinutes();
+            const endMinutes = sessionEnd.getHours() * 60 + sessionEnd.getMinutes();
+            
+            const startPercent = startMinutes / (24 * 60);
+            const durationPercent = (endMinutes - startMinutes) / (24 * 60);
+            
+            const topPosition = startPercent * timelineHeight * scalingFactor;
+            const itemHeight = Math.max(durationPercent * timelineHeight * scalingFactor, 4);
+            
+            return (
+              <div
+                key={index}
+                style={{
+                  position: 'absolute',
+                  top: `${topPosition}px`,
+                  left: '0',
+                  right: '0',
+                  height: `${itemHeight}px`,
+                  backgroundColor: '#877DFF',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '11px',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  zIndex: 3,
+                }}
+                title={`${sessionStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} - ${sessionEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
+              >
+                {itemHeight > 20 && (
+                  <span style={{ textAlign: 'center', padding: '2px' }}>
+                    {session.appData[0].title}
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
-          <div className={styles.projectDataRail}>
-            
-          </div>
-          <div className={styles.calanderDataRail}>
-            
-          </div>
+            );
+          })}
         </div>
       </div>
       

@@ -245,17 +245,39 @@ export class CategoryManager {
         return [];
       }
 
-      // Query database for all unique window titles
+      // Clear cache to ensure fresh data with new query
+      this.detectedAppsCache = [];
+      this.lastDetectedAppsUpdate = 0;
+      this.invalidateFinalCategoriesCache();
+      
+      // Get today's date range in milliseconds (start and end of today)
+      const today = new Date();
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+      const todayEnd = todayStart + (24 * 60 * 60 * 1000) - 1; // End of today
+      
+      // Query database for unique window titles from today only
       // Filters out null/empty titles and sorts alphabetically
-      const stmt = db.prepare('SELECT DISTINCT title FROM active_windows WHERE title IS NOT NULL AND title != \'\' ORDER BY title ASC');
-      const rows = stmt.all();
+      const stmt = db.prepare(`
+        SELECT DISTINCT title 
+        FROM active_windows 
+        WHERE title IS NOT NULL 
+        AND title != '' 
+        AND timestamp >= ? 
+        AND timestamp <= ?
+        ORDER BY title ASC
+      `);
+      const rows = stmt.all(todayStart, todayEnd);
       const detectedApps = rows.map((row: any) => row.title);
       
       // Update cache with fresh data
       this.detectedAppsCache = detectedApps;
       this.lastDetectedAppsUpdate = now;
       
-      log.info('CategoryManager: Retrieved detected apps', { count: detectedApps.length });
+      log.info('CategoryManager: Retrieved detected apps for today', { 
+        count: detectedApps.length, 
+        todayStart: new Date(todayStart).toISOString(),
+        todayEnd: new Date(todayEnd).toISOString()
+      });
       return detectedApps;
     } catch (error) {
       log.error('CategoryManager: Failed to get detected apps:', error);
@@ -266,6 +288,125 @@ export class CategoryManager {
   // --- New: Helper to compute a hash of detected apps for cache invalidation ---
   private computeAppsHash(apps: string[]): string {
     return apps.sort().join('|');
+  }
+
+  /**
+   * Map JSON category IDs to default category system IDs
+   * 
+   * This method maps the category IDs from the JSON file to the expected
+   * category IDs in the default category system.
+   * 
+   * @param {string} jsonCategoryId - Category ID from the JSON file
+   * @returns {string} Mapped category ID for the default system
+   */
+  private mapJsonCategoryToDefault(jsonCategoryId: string): string {
+    const categoryMapping: { [key: string]: string } = {
+      'admin': 'system',
+      'break': 'miscellaneous',
+      'browsing': 'browsers',
+      'code': 'development',
+      'customer_support': 'work',
+      'design': 'creative',
+      'documenting': 'work',
+      'email': 'communication',
+      'entertainment': 'entertainment',
+      'finance': 'work',
+      'focus_mode': 'utilities',
+      'hiring': 'work',
+      'in_person_meeting': 'communication',
+      'learning': 'learning',
+      'marketing_messaging': 'work',
+      'miscellaneous': 'miscellaneous',
+      'personal': 'miscellaneous',
+      'product': 'work',
+      'productivity': 'work',
+      'research': 'learning',
+      'sales': 'work',
+      'shopping': 'miscellaneous',
+      'social_media': 'social',
+      'task_management': 'work',
+      'uncategorized': 'miscellaneous',
+      'utility': 'utilities',
+      'video_conferencing': 'communication',
+      'workout': 'miscellaneous',
+      'writing': 'work'
+    };
+    
+    return categoryMapping[jsonCategoryId] || 'miscellaneous';
+  }
+
+  /**
+   * Get the original JSON category ID before mapping to default categories
+   * This is useful for systems that need to work with the original category structure
+   * 
+   * @param {string} appName - The application name to categorize
+   * @param {string} [domain] - (Optional) The domain for browser windows
+   * @param {boolean} [exactWord] - (Optional) If true, match keywords as whole words only
+   * @returns {string} The original JSON category ID
+   */
+  public getOriginalJsonCategory(appName: string, domain?: string, exactWord?: boolean): string {
+    const normalizedAppName = appName.toLowerCase();
+    const normalizedDomain = domain ? domain.toLowerCase() : '';
+
+    // Priority 1: Check user-defined overrides first
+    if (this.userSettings.appCategoryOverrides[appName]) {
+      return this.userSettings.appCategoryOverrides[appName];
+    }
+
+    // Priority 2: Special handling for browser windows with content URLs/domains
+    const browserKeywords = ['chrome', 'firefox', 'safari', 'edge', 'brave', 'opera', 'vivaldi'];
+    const isBrowserWindow = browserKeywords.some(keyword => normalizedAppName.includes(keyword));
+    if (isBrowserWindow) {
+      // Check against JSON category definitions for browser content
+      const contentCategories = ['social_media', 'entertainment', 'learning', 'code', 'productivity', 'video_conferencing'];
+      for (const categoryId of contentCategories) {
+        if (defaultCategoryDefinitions[categoryId]) {
+          for (const keyword of defaultCategoryDefinitions[categoryId].keywords) {
+            if (exactWord) {
+              if ((normalizedDomain && keyword.toLowerCase() === normalizedDomain) ||
+                  (normalizedAppName === keyword.toLowerCase())) {
+                return categoryId; // Return original JSON category ID
+              }
+            } else {
+              if (
+                (normalizedDomain && (normalizedDomain.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(normalizedDomain))) ||
+                normalizedAppName.includes(keyword.toLowerCase()) ||
+                keyword.toLowerCase().includes(normalizedAppName) ||
+                (keyword.match(/\w+\.\w+/) && normalizedDomain && normalizedDomain.includes(keyword.toLowerCase()))
+              ) {
+                return categoryId; // Return original JSON category ID
+              }
+            }
+          }
+        }
+      }
+      return 'browsing'; // Return original JSON category for browsers
+    }
+
+    // Priority 3: Check against default category keyword definitions
+    for (const [categoryId, categoryDef] of Object.entries(defaultCategoryDefinitions)) {
+      for (const keyword of categoryDef.keywords) {
+        if (exactWord) {
+          if (normalizedAppName === keyword.toLowerCase()) {
+            return categoryId; // Return original JSON category ID
+          }
+        } else {
+          if (normalizedAppName.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(normalizedAppName)) {
+            return categoryId; // Return original JSON category ID
+          }
+        }
+      }
+    }
+
+    // Priority 4: Check if app is explicitly assigned to a custom category
+    for (const [categoryId, categoryData] of Object.entries(this.userSettings.customCategories)) {
+      if (categoryData.apps.includes(appName)) {
+        return categoryId;
+      }
+    }
+
+    // Priority 5: Default fallback category
+    return 'miscellaneous';
   }
 
   /**
@@ -297,7 +438,8 @@ export class CategoryManager {
     const browserKeywords = ['chrome', 'firefox', 'safari', 'edge', 'brave', 'opera', 'vivaldi'];
     const isBrowserWindow = browserKeywords.some(keyword => normalizedAppName.includes(keyword));
     if (isBrowserWindow) {
-      const contentCategories = ['social', 'entertainment', 'learning', 'development', 'work'];
+      // Check against JSON category definitions for browser content
+      const contentCategories = ['social_media', 'entertainment', 'learning', 'code', 'productivity', 'video_conferencing'];
       for (const categoryId of contentCategories) {
         if (defaultCategoryDefinitions[categoryId]) {
           for (const keyword of defaultCategoryDefinitions[categoryId].keywords) {
@@ -305,7 +447,7 @@ export class CategoryManager {
             if (exactWord) {
               if ((normalizedDomain && keyword.toLowerCase() === normalizedDomain) ||
                   (normalizedAppName === keyword.toLowerCase())) {
-                return categoryId;
+                return this.mapJsonCategoryToDefault(categoryId);
               }
             } else {
               if (
@@ -314,7 +456,7 @@ export class CategoryManager {
                 keyword.toLowerCase().includes(normalizedAppName) ||
                 (keyword.match(/\w+\.\w+/) && normalizedDomain && normalizedDomain.includes(keyword.toLowerCase()))
               ) {
-                return categoryId;
+                return this.mapJsonCategoryToDefault(categoryId);
               }
             }
           }
@@ -328,11 +470,11 @@ export class CategoryManager {
       for (const keyword of categoryDef.keywords) {
         if (exactWord) {
           if (normalizedAppName === keyword.toLowerCase()) {
-            return categoryId;
+            return this.mapJsonCategoryToDefault(categoryId);
           }
         } else {
           if (normalizedAppName.includes(keyword.toLowerCase()) || keyword.toLowerCase().includes(normalizedAppName)) {
-            return categoryId;
+            return this.mapJsonCategoryToDefault(categoryId);
           }
         }
       }

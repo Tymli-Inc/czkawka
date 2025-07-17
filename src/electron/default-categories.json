@@ -86,12 +86,19 @@
       "finance", "budget", "expense", "banking", "investment", "tax", "payroll"
     ]
   },
-  "hiring": {
-    "description": "Recruitment and hiring management tools",
-    "color": "#FF8A65",
+  "focus_mode": {
+    "description": "Focus mode sessions for productivity and concentration",
+    "color": "#8B5CF6",
     "keywords": [
-      "linkedin recruiter", "indeed", "glassdoor", "workday", "bamboohr",
-      "greenhouse", "lever", "recruiting", "hr", "applicant tracking"
+      "focus mode", "focus session", "productivity", "concentration", "deep work"
+    ]
+  },
+  "hiring": {
+    "description": "Recruitment and hiring applications",
+    "color": "#FF9F43",
+    "keywords": [
+      "linkedin", "indeed", "glassdoor", "monster", "ziprecruiter", "careerbuilder",
+      "recruitee", "workday", "greenhouse", "lever", "bamboohr", "recruitment"
     ]
   },
   "in_person_meeting": {

@@ -208,21 +208,6 @@ const ScreentimePage = () => {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1 style={{
-        fontSize: '24px',
-        height: '55px',
-        lineHeight: '40px',
-        paddingBottom: '20px',
-        marginTop: '0',
-        borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-      }}>
-        <PiClockFill style={{ verticalAlign: 'middle', marginRight: '8px', color: 'rgba(206, 206, 206, 0.77)' }} />
-        Screentime
-      </h1>
-
       {user ? (
         <>
           {/* Combined Header: Date Navigation + Period Selector */}
