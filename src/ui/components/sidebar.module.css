@@ -103,6 +103,15 @@
   }
 }
 
+.focusButton .link.active {
+  border-color: rgba(255, 68, 68, 0.5);
+  background-color: rgba(255, 68, 68, 0.1);
+}
+
+.focusButton .link.active::after {
+  background: linear-gradient(-30deg, rgba(255, 68, 68, 0.8) 0%, rgba(255, 100, 100, 0.8) 50%, rgba(255, 68, 68, 0.8) 100%);
+}
+
 /* New tracking button styling */
 .trackingButton {
   cursor: pointer;

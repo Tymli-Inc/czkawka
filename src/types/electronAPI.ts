@@ -273,4 +273,73 @@ export interface ElectronAPI {
   onShowQuestionnaire: (callback: (data: { userId: string; userName: string }) => void) => void;
   /** Remove questionnaire event listeners */
   removeQuestionnaireListener: () => void;
+
+  // Focus Mode APIs
+  /** Start a focus mode session */
+  startFocusMode: () => Promise<{ success: boolean; message: string }>;
+  /** End the current focus mode session */
+  endFocusMode: () => Promise<{ success: boolean; message: string }>;
+  /** Toggle focus mode on/off */
+  toggleFocusMode: () => Promise<{ success: boolean }>;
+  /** Get current focus mode status and active session */
+  getFocusModeStatus: () => Promise<{
+    success: boolean;
+    data?: {
+      isActive: boolean;
+      session: any;
+      settings: any;
+    };
+    error?: string;
+  }>;
+  /** Update focus mode settings */
+  updateFocusModeSettings: (settings: {
+    duration?: number;
+    jobRole?: string;
+    isEnabled?: boolean;
+    showDistractionPopup?: boolean;
+    autoBreakReminder?: boolean;
+  }) => Promise<{ success: boolean; message: string }>;
+  /** Get focus mode settings */
+  getFocusModeSettings: () => Promise<{
+    success: boolean;
+    data?: any;
+    error?: string;
+  }>;
+  /** Get focus mode session history */
+  getFocusModeHistory: (days?: number) => Promise<{
+    success: boolean;
+    data?: any[];
+    error?: string;
+  }>;
+  /** Get available job roles for focus mode */
+  getFocusModeJobRoles: () => Promise<{
+    success: boolean;
+    data?: string[];
+    error?: string;
+  }>;
+  /** Create a test focus session for testing */
+  createTestFocusSession: () => Promise<{
+    success: boolean;
+    message?: string;
+  }>;
+  /** Listen for focus mode events */
+  onFocusModeStarted: (callback: (data: any) => void) => void;
+  onFocusModeEnded: (callback: (data: any) => void) => void;
+  onFocusDistraction: (callback: (data: any) => void) => void;
+  onFocusSettingsUpdated: (callback: (data: any) => void) => void;
+  /** Remove focus mode event listeners */
+  removeFocusModeListeners: () => void;
+
+  // Focus Mode popup APIs
+  /** Start focus mode with specific duration and title (used by popup) */
+  startFocusModeWithDuration: (duration: number, title: string) => Promise<{ success: boolean }>;
+  /** Cancel focus mode setup (used by popup) */
+  cancelFocusMode: () => Promise<{ success: boolean }>;
+
+  /** Get the active focus mode shortcut */
+  getFocusModeShortcut: () => Promise<{
+    success: boolean;
+    data?: string | null;
+    error?: string;
+  }>;
 }

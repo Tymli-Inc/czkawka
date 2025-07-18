@@ -16,6 +16,23 @@ const CategorizationPage = () => {
   const [showNewCategoryForm, setShowNewCategoryForm] = useState(false);
   const [newCategory, setNewCategory] = useState({ name: '', description: '', color: '#007bff' });
 
+  // Helper function to get the current category of an app
+  const getAppCategory = (appName: string): string => {
+    // First check if there's a manual override
+    if (appOverrides[appName]) {
+      return appOverrides[appName];
+    }
+    
+    // Otherwise find which category this app belongs to
+    for (const [categoryId, category] of Object.entries(categories)) {
+      if (category.apps.includes(appName)) {
+        return categoryId;
+      }
+    }
+    
+    return 'miscellaneous'; // fallback
+  };
+
   const loadCategories = async () => {
     try {
       const [categoriesResult, settingsResult] = await Promise.all([
@@ -341,7 +358,7 @@ const CategorizationPage = () => {
                     fontSize: '12px'
                   }}
                 >
-                  <option value="">Auto-detect</option>
+                  <option value="">Auto-detect ({getAppCategory(app)})</option>
                   {Object.keys(categories).map(categoryId => (
                     <option key={categoryId} value={categoryId}>
                       {categoryId}

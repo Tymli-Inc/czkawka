@@ -15,6 +15,7 @@ const navItem: string;
 const focusButton: string;
 const trackingButton: string;
 const link: string;
+const active: string;
 const linkActive: string;
 
 export {
@@ -27,6 +28,7 @@ export {
 	focusButton,
 	trackingButton,
 	link,
+	active,
 	linkActive
 };
 
@@ -40,5 +42,6 @@ export default {
 	focusButton,
 	trackingButton,
 	link,
+	active,
 	linkActive
 };

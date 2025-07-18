@@ -50,6 +50,33 @@
     opacity: 0.8;
 }
 
+.focusButton.active {
+    background-color: rgba(255, 68, 68, 0.2);
+    border-color: rgba(255, 68, 68, 0.3);
+}
+
+.focusButton.active:hover {
+    background-color: rgba(255, 68, 68, 0.3);
+}
+
+.focusButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.loader {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 .link {
     background: #222222;
     border-style: solid;

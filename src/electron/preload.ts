@@ -24,7 +24,8 @@ interface ElectronAPI {
   onAuthSuccess: (callback: (userData: any) => void) => void;
   onAuthFailure: (callback: () => void) => void;
   onAuthLogout: (callback: () => void) => void;
-  removeAuthListener: () => void;      storeUserToken: (userData: any) => Promise<{ success: boolean; error?: string }>;
+  removeAuthListener: () => void;
+  storeUserToken: (userData: any) => Promise<{ success: boolean; error?: string }>;
   getUserToken: () => Promise<{ userData: any | null; isLoggedIn: boolean }>;
   getUserData: () => Promise<{ userData: any | null; success: boolean; error?: string }>;
   clearUserToken: () => Promise<{ success: boolean; error?: string }>;
@@ -62,6 +63,24 @@ interface ElectronAPI {
   getUserInfoLocal: () => Promise<any>;
   onShowQuestionnaire: (callback: (data: { userId: string; userName: string }) => void) => void;
   removeQuestionnaireListener: () => void;
+  // Focus Mode APIs
+  startFocusMode: () => Promise<{ success: boolean; message: string }>;
+  endFocusMode: () => Promise<{ success: boolean; message: string }>;
+  toggleFocusMode: () => Promise<{ success: boolean }>;
+  getFocusModeStatus: () => Promise<{ success: boolean; data?: any; error?: string }>;
+  updateFocusModeSettings: (settings: any) => Promise<{ success: boolean; message: string }>;
+  getFocusModeSettings: () => Promise<{ success: boolean; data?: any; error?: string }>;
+  getFocusModeHistory: (days?: number) => Promise<{ success: boolean; data?: any[]; error?: string }>;
+  getFocusModeJobRoles: () => Promise<{ success: boolean; data?: string[]; error?: string }>;
+  createTestFocusSession: () => Promise<{ success: boolean; message?: string }>;
+  startFocusModeWithDuration: (duration: number, title: string) => Promise<{ success: boolean; message?: string }>;
+  cancelFocusMode: () => Promise<{ success: boolean; message?: string }>;
+  onFocusModeStarted: (callback: (data: any) => void) => void;
+  onFocusModeEnded: (callback: (data: any) => void) => void;
+  onFocusDistraction: (callback: (data: any) => void) => void;
+  onFocusSettingsUpdated: (callback: (data: any) => void) => void;
+  removeFocusModeListeners: () => void;
+  getFocusModeShortcut: () => Promise<string>; // New method to get the active focus mode shortcut
 };
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -279,5 +298,77 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   removeQuestionnaireListener: () => {
     ipcRenderer.removeAllListeners('show-questionnaire');
-  }
+  },
+
+  // Focus Mode APIs
+  startFocusMode: async () => {
+    return await ipcRenderer.invoke('start-focus-mode');
+  },
+
+  endFocusMode: async () => {
+    return await ipcRenderer.invoke('end-focus-mode');
+  },
+
+  toggleFocusMode: async () => {
+    return await ipcRenderer.invoke('toggle-focus-mode');
+  },
+
+  getFocusModeStatus: async () => {
+    return await ipcRenderer.invoke('get-focus-mode-status');
+  },
+
+  updateFocusModeSettings: async (settings: any) => {
+    return await ipcRenderer.invoke('update-focus-mode-settings', settings);
+  },
+
+  getFocusModeSettings: async () => {
+    return await ipcRenderer.invoke('get-focus-mode-settings');
+  },
+
+  createTestFocusSession: async () => {
+    return await ipcRenderer.invoke('create-test-focus-session');
+  },
+
+  startFocusModeWithDuration: async (duration: number, title: string) => {
+    return await ipcRenderer.invoke('start-focus-mode-with-duration', duration, title);
+  },
+
+  cancelFocusMode: async () => {
+    return await ipcRenderer.invoke('cancel-focus-mode');
+  },
+
+  getFocusModeHistory: async (days?: number) => {
+    return await ipcRenderer.invoke('get-focus-mode-history', days);
+  },
+
+  getFocusModeJobRoles: async () => {
+    return await ipcRenderer.invoke('get-focus-mode-job-roles');
+  },
+
+  onFocusModeStarted: (callback: (data: any) => void) => {
+    ipcRenderer.on('focus-mode-started', (_, data) => callback(data));
+  },
+
+  onFocusModeEnded: (callback: (data: any) => void) => {
+    ipcRenderer.on('focus-mode-ended', (_, data) => callback(data));
+  },
+
+  onFocusDistraction: (callback: (data: any) => void) => {
+    ipcRenderer.on('focus-distraction-detected', (_, data) => callback(data));
+  },
+
+  onFocusSettingsUpdated: (callback: (data: any) => void) => {
+    ipcRenderer.on('focus-settings-updated', (_, data) => callback(data));
+  },
+
+  removeFocusModeListeners: () => {
+    ipcRenderer.removeAllListeners('focus-mode-started');
+    ipcRenderer.removeAllListeners('focus-mode-ended');
+    ipcRenderer.removeAllListeners('focus-distraction-detected');
+    ipcRenderer.removeAllListeners('focus-settings-updated');
+  },
+
+  getFocusModeShortcut: async () => {
+    return await ipcRenderer.invoke('get-focus-mode-shortcut');
+  },
 } as ElectronAPI);

@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdArrowRight, MdHome, MdTimeline, MdBlock, MdSettings, MdVisibility, MdVisibilityOff } from "react-icons/md";
-import { IoAnalytics, IoPlay } from "react-icons/io5";
+import { MdArrowRight, MdHome, MdTimeline, MdBlock, MdSettings, MdVisibility, MdVisibilityOff, MdCheckBox, MdFolder } from "react-icons/md";
+import { IoAnalytics, IoPlay, IoStop } from "react-icons/io5";
 import { AiFillPieChart } from "react-icons/ai";
 import { PiClockFill } from "react-icons/pi";
+import { HiOutlineFire } from "react-icons/hi";
 import styles from "./sidebar.module.css";
 
 const Sidebar: React.FC = () => {
   const [expanded, setExpanded] = React.useState(false);
   const [trackingEnabled, setTrackingEnabled] = useState<boolean>(true);
+  const [focusActive, setFocusActive] = useState<boolean>(false);
   const location = useLocation();
 
   // Handle mouse enter and leave for hover expansion
@@ -106,18 +108,27 @@ const Sidebar: React.FC = () => {
     { path: '/', label: 'Home',
         //@ts-ignore
         icon: <MdHome /> },
-    { path: '/analytics', label: 'Analytics',
+    { path: '/focus', label: 'Focus Mode',
         //@ts-ignore
-        icon: <IoAnalytics /> },
-    { path: '/screentime', label: 'Screentime',
+        icon: <HiOutlineFire /> },
+    { path: '/tasks', label: 'Tasks',
         //@ts-ignore
-        icon: <PiClockFill /> },
-    { path: '/categories', label: 'Categories',
+        icon: <MdCheckBox /> },
+    { path: '/projects', label: 'Projects',
         //@ts-ignore
-        icon: <AiFillPieChart /> },
+        icon: <MdFolder /> },
     { path: '/blocking', label: 'Blocking',
         //@ts-ignore
         icon: <MdBlock /> },
+    { path: '/screentime', label: 'Screentime',
+        //@ts-ignore
+        icon: <PiClockFill /> },
+    { path: '/analytics', label: 'Analytics',
+        //@ts-ignore
+        icon: <IoAnalytics /> },
+    { path: '/categories', label: 'Categories',
+        //@ts-ignore
+        icon: <AiFillPieChart /> },
     { path: '/settings', label: 'Settings',
         //@ts-ignore
         icon: <MdSettings /> }
@@ -125,14 +136,35 @@ const Sidebar: React.FC = () => {
 
   // Window tracking state
   useEffect(() => {
-    // Get initial status
+    // Get initial tracking status
     window.electronAPI.getWindowTrackingStatus().then(setTrackingEnabled);
-    // Subscribe to changes
+    // Subscribe to tracking changes
     window.electronAPI.onTrackingStatusChanged((enabled) => {
       setTrackingEnabled(enabled);
     });
+    
+    // Get initial focus status
+    window.electronAPI.getFocusModeStatus().then((result) => {
+      if (result.success && result.data) {
+        console.log('Sidebar: Initial focus status:', result.data);
+        setFocusActive(result.data.isActive);
+      }
+    });
+    
+    // Subscribe to focus mode changes
+    window.electronAPI.onFocusModeStarted?.(() => {
+      console.log('Sidebar: Focus mode started');
+      setFocusActive(true);
+    });
+    
+    window.electronAPI.onFocusModeEnded?.(() => {
+      console.log('Sidebar: Focus mode ended');
+      setFocusActive(false);
+    });
+    
     return () => {
       window.electronAPI.removeTrackingStatusListener();
+      window.electronAPI.removeFocusModeListeners?.();
     };
   }, []);
 
@@ -247,17 +279,28 @@ const Sidebar: React.FC = () => {
            animate={expanded ? "expanded" : "collapsed"}
          >
           <button
-            className={styles.link}
-            onClick={() => {
-              // Add your focus session logic here
-              console.log('Focus Session clicked');
+            className={`${styles.link} ${focusActive ? styles.active : ''}`}
+            onClick={async () => {
+              try {
+                // Toggle focus mode
+                const statusResult = await window.electronAPI.getFocusModeStatus();
+                if (statusResult.success && statusResult.data?.isActive) {
+                  // If active, end it
+                  await window.electronAPI.endFocusMode();
+                } else {
+                  // If not active, start it
+                  await window.electronAPI.startFocusMode();
+                }
+              } catch (error) {
+                console.error('Failed to toggle focus mode:', error);
+              }
             }}
           >
             <motion.div
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
-              <IoPlay />
+              {focusActive ? <IoStop /> : <IoPlay />}
             </motion.div>
             <AnimatePresence>
               {expanded && (
@@ -274,7 +317,7 @@ const Sidebar: React.FC = () => {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  Focus Session
+                  {focusActive ? 'End Focus' : 'Focus Session'}
                 </motion.span>
               )}
             </AnimatePresence>

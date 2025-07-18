@@ -1,12 +1,80 @@
-import { IoAnalytics, IoPlay } from 'react-icons/io5';
+import React, { useState, useEffect } from 'react';
+import { IoAnalytics, IoPlay, IoStop } from 'react-icons/io5';
 import styles from './controls.module.css';
 import { Link } from 'react-router-dom';
 import { PiClockFill } from 'react-icons/pi';
 
 export default function Controls() {
+    const [isActive, setIsActive] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        loadFocusStatus();
+        setupEventListeners();
+        return () => {
+            window.electronAPI.removeFocusModeListeners?.();
+        };
+    }, []);
+
+    const loadFocusStatus = async () => {
+        try {
+            const result = await window.electronAPI.getFocusModeStatus();
+            if (result.success && result.data) {
+                console.log('Controls: Initial focus status:', result.data);
+                setIsActive(result.data.isActive);
+            }
+        } catch (error) {
+            console.error('Failed to load focus status:', error);
+        }
+    };
+
+    const setupEventListeners = () => {
+        window.electronAPI.onFocusModeStarted?.(() => {
+            console.log('Controls: Focus mode started');
+            setIsActive(true);
+        });
+
+        window.electronAPI.onFocusModeEnded?.(() => {
+            console.log('Controls: Focus mode ended');
+            setIsActive(false);
+        });
+    };
+
+    const handleFocusSession = async () => {
+        if (loading) return;
+        
+        setLoading(true);
+        try {
+            // Check current status first to toggle focus mode properly
+            const statusResult = await window.electronAPI.getFocusModeStatus();
+            if (statusResult.success && statusResult.data?.isActive) {
+                // If active, end it
+                const result = await window.electronAPI.endFocusMode();
+                if (!result.success) {
+                    alert(result.message || 'Failed to end focus mode');
+                }
+            } else {
+                // If not active, start it
+                const result = await window.electronAPI.startFocusMode();
+                if (!result.success) {
+                    alert(result.message || 'Failed to start focus mode');
+                }
+            }
+        } catch (error) {
+            console.error('Failed to toggle focus mode:', error);
+            alert('Failed to toggle focus mode');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className={styles.controlsContainer}>
-            <button className={styles.focusButton} onClick={() => alert('Focus Session not implemented yet')}>
+            <button 
+                className={`${styles.focusButton} ${isActive ? styles.active : ''}`} 
+                onClick={handleFocusSession}
+                disabled={loading}
+            >
                 <div style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -16,16 +84,21 @@ export default function Controls() {
                     color: '#fff',
                     padding: '16px',
                 }}>
-                    <IoPlay />
+                    {loading ? (
+                        <div className={styles.loader} />
+                    ) : isActive ? (
+                        <IoStop />
+                    ) : (
+                        <IoPlay />
+                    )}
                     <span style={{
                         marginLeft: '4px',
                         fontSize: '17px',
                         fontWeight: '300',
-
                         textAlign: 'left',
                         color: 'rgba(255, 255, 255, 0.9)',
                     }}>
-                        Focus Session
+                        {isActive ? 'End Focus' : 'Focus Session'}
                     </span>
                 </div>
             </button>
