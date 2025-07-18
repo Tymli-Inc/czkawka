@@ -7,6 +7,7 @@ import { setupProtocolHandling, setupDeepLinkHandlers } from './auth';
 import { ensureSingleInstance, getTrayIconPath } from './utils';
 import { createMainWindow } from './windowManager';
 import { setupIpcHandlers } from './ipcHandlers';
+import focusModeManager from './focusMode';
 import log from 'electron-log';
 import path from 'path';
 import { setupAutoUpdate, cleanupAutoUpdater } from './autoUpdate';
@@ -138,6 +139,8 @@ app.whenReady().then(async () => {
         initializeWindowTracking();
         setupIpcHandlers();
         setupDeepLinkHandlers(mainWindow);
+        // Initialize focus mode manager after app is ready
+        focusModeManager.initialize();
         // Start auto-update check
         setupAutoUpdate(mainWindow);
         
@@ -170,4 +173,5 @@ app.on('before-quit', () => {
     log.info('App before-quit event');
     app.isQuiting = true;
     cleanupAutoUpdater();
+    focusModeManager.cleanup();
 });

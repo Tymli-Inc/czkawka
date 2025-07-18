@@ -1,0 +1,619 @@
+.container {
+  padding: 20px;
+  margin: 0 auto;
+  color: #ffffff;
+}
+
+.header {
+  margin-bottom: 30px;
+}
+
+.header h1 {
+  font-size: 2.5rem;
+  margin: 0 0 10px 0;
+  color: #ffffff;
+}
+
+.header p {
+  font-size: 1.1rem;
+  color: #b0b0b0;
+  margin: 0;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 1.2rem;
+  color: #b0b0b0;
+}
+
+/* Main Content Layout */
+.mainContent {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 30px;
+  align-items: center;
+  min-height: 600px;
+}
+
+@media (max-width: 768px) {
+  .mainContent {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Timer Section (Left) */
+.timerSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Active Session */
+.activeSession {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  width: fit-content;
+}
+
+/* Circular Timer */
+.circularTimer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  width: 100%;
+  max-width: 350px;
+}
+
+.timerCircle {
+  position: relative;
+  width: 350px;
+  height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progressRing {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.timerContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  z-index: 1;
+}
+
+.timeDisplay {
+  font-size: 3.5rem;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 8px;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.endSessionButton {
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  padding: 12px 30px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  min-width: 140px;
+}
+
+.endSessionButton:hover {
+  background: rgba(0, 0, 0, 0.6);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.sessionStats {
+  display: flex;
+  gap: 40px;
+  margin-top: 20px;
+  justify-content: center;
+  width: 100%;
+}
+
+.sessionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.sessionHeader h2 {
+  color: #ffffff;
+  font-size: 1.8rem;
+  margin: 0;
+}
+
+.endButton {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.endButton:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Timer Display */
+.timerDisplay {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.timeRemaining {
+  font-size: 4rem;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 10px;
+  font-family: 'Courier New', monospace;
+}
+
+.timeLabel {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+  font-weight: 400;
+}
+
+.sessionInfo {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 20px;
+}
+
+.sessionStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.sessionStats {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 20px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.statValue {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 5px;
+}
+
+.statLabel {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: #ffffff;
+  transition: width 1s ease;
+}
+
+/* Start Section */
+.startSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+  width: fit-content;
+}
+
+.startCircle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 350px;
+  height: 350px;
+  border: 3px solid rgba(135, 125, 255, 0.3);
+  border-radius: 50%;
+  background: rgba(135, 125, 255, 0.1);
+  backdrop-filter: blur(5px);
+}
+
+.startContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0px;
+}
+
+.startTitle {
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: #ffffff;
+}
+
+.durationDisplay {
+  font-size: 3rem;
+  font-weight: bold;
+  color: white;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.durationLabel {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 20px;
+}
+
+.startInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  text-align: center;
+}
+
+.jobRole {
+  font-size: 1.1rem;
+  color: #877DFF;
+  margin-bottom: 5px;
+}
+
+.shortcutInfo {
+  margin-top: 10px;
+}
+
+.startSection h2 {
+  color: #ffffff;
+  font-size: 1.8rem;
+  margin: 0 0 20px 0;
+}
+
+.quickStart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.startButton {
+  background: grey;
+  border: none;
+  color: #ffffff;
+  padding: 10px;
+  border-radius:8px;
+  font-size: 16px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(135, 125, 255, 0.3);
+}
+
+.startButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(135, 125, 255, 0.4);
+  background: linear-gradient(135deg, #9990ff 0%, #7c3aed 100%);
+}
+
+.startButton:disabled {
+  background: #666666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.shortcut {
+  color: #b0b0b0;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.shortcut kbd {
+  background: #333333;
+  border: 1px solid #555555;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  color: #ffffff;
+}
+
+/* Settings */
+.settings {
+  background: rgba(46, 46, 46, 0.3);
+  border-radius: 12px;
+  padding: 30px;
+  margin-bottom: 30px;
+}
+
+.settings h2 {
+  color: #ffffff;
+  font-size: 1.8rem;
+  margin: 0 0 20px 0;
+}
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.setting label {
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.setting input[type="range"] {
+  width: 100%;
+  height: 6px;
+  background: #333333;
+  border-radius: 3px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.setting input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  background: #4ecdc4;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.setting input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: #4ecdc4;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+}
+
+.setting select {
+  background: #333333;
+  border: 1px solid #555555;
+  color: #ffffff;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.setting input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  accent-color: #4ecdc4;
+}
+
+.setting label:has(input[type="checkbox"]) {
+  flex-direction: row;
+  align-items: center;
+}
+
+.settingValue {
+  color: #4ecdc4;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* History */
+.history {
+  background: rgba(46, 46, 46, 0.3);
+  border-radius: 12px;
+  padding: 30px;
+}
+
+.history h2 {
+  color: #ffffff;
+  font-size: 1.8rem;
+  margin: 0 0 20px 0;
+}
+
+.noHistory {
+  text-align: center;
+  color: #b0b0b0;
+  font-size: 1.1rem;
+  margin: 40px 0;
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.historyItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.historyDate {
+  color: #ffffff;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.historyDetails {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  justify-content: center;
+}
+
+.historyDetails span {
+  color: #b0b0b0;
+  font-size: 0.9rem;
+}
+
+.historyDuration {
+  font-weight: 500;
+  color: #4ecdc4 !important;
+}
+
+.historyRole {
+  color: #a0a0a0 !important;
+}
+
+.historyDistractions {
+  color: #ff9f43 !important;
+}
+
+.historyStatus {
+  display: flex;
+  align-items: center;
+}
+
+.active {
+  background: #4ecdc4;
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.completed {
+  background: #666666;
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Timer Preview */
+.timerPreview {
+  margin-bottom: 20px;
+}
+
+.previewTime {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #4ecdc4;
+  margin-bottom: 10px;
+  font-family: 'Courier New', monospace;
+}
+
+.previewLabel {
+  font-size: 1rem;
+  color: #b0b0b0;
+  margin-bottom: 15px;
+}
+
+.jobRoleInfo {
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border-left: 4px solid #4ecdc4;
+}
+
+.jobRoleInfo p {
+  margin: 5px 0;
+  font-size: 0.9rem;
+}
+
+.roleNote {
+  color: #b0b0b0;
+  font-size: 0.8rem;
+}
+
+/* Timeline Section (Right) */
+.timelineSection {
+  background: rgba(46, 46, 46, 0.3);
+  border-radius: 16px;
+  padding: 30px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border: 1px solid #333;
+  min-height: 600px;
+}
+
+.timelineSection h2 {
+  color: #ffffff;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.timelineWrapper {
+  flex: 1;
+  min-height: 500px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+  
+  .sessionStats {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .settingsGrid {
+    grid-template-columns: 1fr;
+  }
+}

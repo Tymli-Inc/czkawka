@@ -1,0 +1,227 @@
+.focusTimelineContainer {
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  background: rgba(0, 0, 0, 0.66);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px 20px;
+  backdrop-filter: blur(10px);
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.headerIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+  color: rgba(158, 158, 158, 0.9);
+}
+
+.headerTitle {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.timelineBase {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+}
+
+.timelineContent {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.timeStops {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.timeStop {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timeLabel {
+  position: absolute;
+  left: -50px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  width: 40px;
+  text-align: right;
+  top: -8px;
+}
+
+.currentTimeIndicator {
+  position: absolute;
+  left: -60px;
+  width: calc(100% + 60px);
+  height: 2px;
+  background-color: #ff4444;
+  z-index: 100;
+  box-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
+}
+
+.currentTimeDot {
+  position: absolute;
+  left: -6px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ff4444;
+  box-shadow: 0 0 6px rgba(255, 68, 68, 0.8);
+}
+
+.focusSessionsContainer {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  padding-left: 20px;
+  padding-right: 80px;
+}
+
+.focusSession {
+  position: absolute;
+  width: 100%;
+  background: linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+  overflow: hidden;
+  min-height: 30px;
+  transition: all 0.2s ease;
+}
+
+.focusSession:hover {
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.5);
+  transform: translateX(2px);
+}
+
+.focusSessionContent {
+  padding: 12px 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 30px;
+}
+
+.focusSessionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.focusSessionDuration {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 2px;
+}
+
+.focusSessionTime {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
+
+.scrollContainer {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.scrollContent {
+  position: relative;
+  width: 100%;
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 4px;
+  user-select: none;
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+}
+
+.scrollContent:hover {
+  background: rgba(139, 92, 246, 0.4);
+}
+
+.resizeHandle {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 12px;
+  cursor: ns-resize;
+  background: rgba(255, 255, 255, 0.4);
+  transition: all 0.2s;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.resizeHandle:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.resizeHandle svg {
+  width: 100%;
+  height: 100%;
+  color: white;
+  font-size: 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .focusSessionContent {
+    padding: 8px 12px;
+  }
+  
+  .focusSessionTitle {
+    font-size: 13px;
+  }
+  
+  .focusSessionDuration {
+    font-size: 11px;
+  }
+  
+  .focusSessionTime {
+    font-size: 10px;
+  }
+  
+  .timeLabel {
+    font-size: 11px;
+  }
+}

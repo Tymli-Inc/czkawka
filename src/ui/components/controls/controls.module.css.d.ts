@@ -8,16 +8,25 @@
 
 const controlsContainer: string;
 const focusButton: string;
+const active: string;
+const loader: string;
+const spin: string;
 const link: string;
 
 export {
 	controlsContainer,
 	focusButton,
+	active,
+	loader,
+	spin,
 	link
 };
 
 export default {
 	controlsContainer,
 	focusButton,
+	active,
+	loader,
+	spin,
 	link
 };

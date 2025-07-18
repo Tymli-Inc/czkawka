@@ -1,9 +1,10 @@
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { MdPerson, MdSecurity, MdSettings, MdCategory } from 'react-icons/md';
+import { MdPerson, MdSecurity, MdSettings, MdCategory, MdCenterFocusWeak } from 'react-icons/md';
 import ProfilePage from './settings/ProfilePage';
 import AuthPage from './settings/AuthPage';
 import ConfigurationPage from './settings/ConfigurationPage';
 import CategorizationPage from './settings/CategorizationPage';
+import FocusModePage from './settings/FocusModePage';
 
 const SettingsPage = () => {
   const location = useLocation();
@@ -13,6 +14,7 @@ const SettingsPage = () => {
     { id: 'auth', label: 'Authentication', icon: MdSecurity, path: '/settings/auth' },
     { id: 'config', label: 'Configuration', icon: MdSettings, path: '/settings/config' },
     { id: 'categories', label: 'Categories', icon: MdCategory, path: '/settings/categories' },
+    { id: 'focus', label: 'Focus Mode', icon: MdCenterFocusWeak, path: '/settings/focus' },
   ];
 
   return (
@@ -78,6 +80,7 @@ const SettingsPage = () => {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/config" element={<ConfigurationPage />} />
           <Route path="/categories" element={<CategorizationPage />} />
+          <Route path="/focus" element={<FocusModePage />} />
         </Routes>
       </div>
     </div>

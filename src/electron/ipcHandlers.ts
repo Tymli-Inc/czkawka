@@ -4,6 +4,7 @@ import {clearUserToken, getLoginStatus, getUserToken, handleLogin, storeUserToke
 import { checkUserInfoAvailable, storeUserInfoAPI, fetchUserInfoAPI, getUserInfoLocal } from './questionnaire';
 import { checkForUpdates, quitAndInstall, resetUpdateState, forceCheckForUpdates } from './autoUpdate';
 import CategoryManager from './categoryManager';
+import focusModeManager from './focusMode';
 import log from 'electron-log';
 import type { UserData } from '../types/electronAPI';
 
@@ -429,6 +430,210 @@ export function setupIpcHandlers() {
       };
     } catch (error) {
       log.error('IPC: Failed to reset categories to defaults:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  // Focus Mode IPC handlers
+  ipcMain.handle('start-focus-mode', async () => {
+    try {
+      log.info('IPC: Starting focus mode');
+      const result = await focusModeManager.startFocusMode();
+      return result;
+    } catch (error) {
+      log.error('IPC: Failed to start focus mode:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('end-focus-mode', async () => {
+    try {
+      log.info('IPC: Ending focus mode');
+      const result = await focusModeManager.endFocusMode();
+      return result;
+    } catch (error) {
+      log.error('IPC: Failed to end focus mode:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('toggle-focus-mode', async () => {
+    try {
+      log.info('IPC: Toggling focus mode');
+      focusModeManager.toggleFocusMode();
+      return { success: true };
+    } catch (error) {
+      log.error('IPC: Failed to toggle focus mode:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('get-focus-mode-status', async () => {
+    try {
+      const session = focusModeManager.getCurrentSession();
+      const settings = focusModeManager.getSettings();
+      const result = {
+        success: true,
+        data: {
+          isActive: session?.isActive || false,
+          session,
+          settings
+        }
+      };
+      log.info('IPC: get-focus-mode-status returning:', result);
+      return result;
+    } catch (error) {
+      log.error('IPC: Failed to get focus mode status:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('update-focus-mode-settings', async (event, settings) => {
+    try {
+      log.info('IPC: Updating focus mode settings', settings);
+      const result = focusModeManager.updateSettings(settings);
+      return result;
+    } catch (error) {
+      log.error('IPC: Failed to update focus mode settings:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('get-focus-mode-settings', async () => {
+    try {
+      const settings = focusModeManager.getSettings();
+      return {
+        success: true,
+        data: settings
+      };
+    } catch (error) {
+      log.error('IPC: Failed to get focus mode settings:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('get-focus-mode-history', async (event, days = 7) => {
+    try {
+      const history = focusModeManager.getFocusHistory(days);
+      return {
+        success: true,
+        data: history
+      };
+    } catch (error) {
+      log.error('IPC: Failed to get focus mode history:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('get-focus-mode-job-roles', async () => {
+    try {
+      const jobRoles = focusModeManager.getJobRoles();
+      return {
+        success: true,
+        data: jobRoles
+      };
+    } catch (error) {
+      log.error('IPC: Failed to get focus mode job roles:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('start-focus-mode-with-duration', async (event, duration: number, title: string) => {
+    try {
+      log.info('IPC: Starting focus mode with duration:', duration, 'title:', title);
+      
+      // Actually start the focus mode with the given duration and title
+      const result = await focusModeManager.startFocusModeWithDuration(duration, title);
+      
+      return {
+        success: result.success,
+        message: result.message
+      };
+    } catch (error) {
+      log.error('IPC: Failed to start focus mode with duration:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('cancel-focus-mode', async () => {
+    try {
+      log.info('IPC: Focus mode cancelled');
+      return { success: true };
+    } catch (error) {
+      log.error('IPC: Failed to cancel focus mode:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('create-test-focus-session', async () => {
+    try {
+      const now = Date.now();
+      const testSession = {
+        startTime: now - (45 * 60 * 1000), // 45 minutes ago
+        endTime: now,
+        duration: 45 * 60 * 1000,
+        jobRole: 'Software Developer',
+        title: 'Test Focus Session'
+      };
+      
+      // Use the focus mode manager to create the session
+      const result = await focusModeManager.createTestSession(testSession);
+      
+      return {
+        success: true,
+        message: 'Test focus session created successfully'
+      };
+    } catch (error) {
+      log.error('IPC: Failed to create test focus session:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : String(error)
+      };
+    }
+  });
+
+  ipcMain.handle('get-focus-mode-shortcut', async () => {
+    try {
+      const shortcut = focusModeManager.getActiveShortcut();
+      return {
+        success: true,
+        data: shortcut
+      };
+    } catch (error) {
+      log.error('IPC: Failed to get focus mode shortcut:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error)
