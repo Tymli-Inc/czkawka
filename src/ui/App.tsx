@@ -10,6 +10,8 @@ import ScreentimePage from './pages/ScreentimePage';
 import CategoriesPage from './pages/CategoriesPage';
 import Blocking from './pages/Blocking';
 import FocusMode from './pages/FocusMode';
+import TasksPage from './pages/TasksPage';
+import ProjectsPage from './pages/ProjectsPage';
 import Questionnaire from './components/questionnaire/Questionnaire';
 import type { ElectronAPI } from '../types/electronAPI';
 
@@ -110,6 +112,8 @@ const App = () => {
               <Route path="/about" element={<AboutPage />} />
               <Route path="/blocking" element={<Blocking />} />
               <Route path="/focus" element={<FocusMode />} />
+              <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/projects" element={<ProjectsPage />} />
             </Routes>
           </main>
         </div>

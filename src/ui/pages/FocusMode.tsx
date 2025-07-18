@@ -247,10 +247,6 @@ const FocusMode: React.FC = () => {
           <div className={styles.timelineWrapper}>
             <FocusTimeline 
               selectedDate={new Date()}
-              onDateNavigate={(direction: 'prev' | 'next') => {
-                // Handle date navigation if needed
-                console.log('Navigate:', direction);
-              }}
               initialScalingFactor={1}
               initialScrollerPosition={0}
               onTimelineReady={(methods: { moveToTime: (hour: number, minute?: number) => void }) => {

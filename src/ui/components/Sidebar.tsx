@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdArrowRight, MdHome, MdTimeline, MdBlock, MdSettings, MdVisibility, MdVisibilityOff } from "react-icons/md";
+import { MdArrowRight, MdHome, MdTimeline, MdBlock, MdSettings, MdVisibility, MdVisibilityOff, MdCheckBox, MdFolder } from "react-icons/md";
 import { IoAnalytics, IoPlay, IoStop } from "react-icons/io5";
 import { AiFillPieChart } from "react-icons/ai";
 import { PiClockFill } from "react-icons/pi";
@@ -111,6 +111,12 @@ const Sidebar: React.FC = () => {
     { path: '/focus', label: 'Focus Mode',
         //@ts-ignore
         icon: <HiOutlineFire /> },
+    { path: '/tasks', label: 'Tasks',
+        //@ts-ignore
+        icon: <MdCheckBox /> },
+    { path: '/projects', label: 'Projects',
+        //@ts-ignore
+        icon: <MdFolder /> },
     { path: '/blocking', label: 'Blocking',
         //@ts-ignore
         icon: <MdBlock /> },
