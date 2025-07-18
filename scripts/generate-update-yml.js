@@ -7,7 +7,7 @@ const { version } = require('../package.json');
 const DIST_DIR = path.join(__dirname, '..', 'build');
 const OUTPUT_DIR = path.join(__dirname, '..', 'release-files');
 const BASE_URL = 'https://hourglass-distribution.vercel.app';
-const GITHUB_RELEASES_URL = 'https://github.com/Hourglass-Inc/hourglass-latest-build/releases/download';
+const GITHUB_RELEASES_URL = 'https://github.com/Tymli-Inc/latest-build/releases/download';
 
 function generateSHA512(filePath) {
   const fileBuffer = fs.readFileSync(filePath);
