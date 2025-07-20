@@ -27,6 +27,46 @@ const App = () => {
     userId: string;
     userName: string;
   } | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Function to check authentication status
+  const checkAuthenticationStatus = async () => {
+    try {
+      setIsLoading(true);
+      const { userData, isLoggedIn: loggedIn } = await window.electronAPI.getUserToken();
+      console.log('Auth check result:', { userData: !!userData, isLoggedIn: loggedIn });
+      
+      // If not logged in, don't proceed with app initialization
+      if (!loggedIn) {
+        setIsLoggedIn(false);
+        setIsLoading(false);
+        return;
+      }
+      
+      setIsLoggedIn(loggedIn);
+      
+      if (loggedIn && userData?.id) {
+        const localInfo = await window.electronAPI.getUserInfoLocal();
+        if (!localInfo) {
+          // No local info, check if available on server
+          const { available } = await window.electronAPI.checkUserInfoAvailable(userData.id);
+          if (!available) {
+            setQuestionnaireData({
+              userId: userData.id,
+              userName: userData.name || userData.email || 'User'
+            });
+            setShowQuestionnaire(true);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking authentication status:', error);
+      setIsLoggedIn(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Listen for questionnaire events
@@ -35,36 +75,31 @@ const App = () => {
       setShowQuestionnaire(true);
     };
 
-    window.electronAPI.onShowQuestionnaire(handleShowQuestionnaire);
-
-    // Check if we need to show questionnaire on app load
-    const checkQuestionnaireStatus = async () => {
-      try {
-        const { userData, isLoggedIn } = await window.electronAPI.getUserToken();
-        if (isLoggedIn && userData?.id) {
-          const localInfo = await window.electronAPI.getUserInfoLocal();
-          if (!localInfo) {
-            // No local info, check if available on server
-            const { available } = await window.electronAPI.checkUserInfoAvailable(userData.id);
-            if (!available) {
-              setQuestionnaireData({
-                userId: userData.id,
-                userName: userData.name || userData.email || 'User'
-              });
-              setShowQuestionnaire(true);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error checking questionnaire status:', error);
-      }
+    // Listen for auth success events
+    const handleAuthSuccess = (userData: any) => {
+      console.log('Auth success detected, rechecking auth status...', userData);
+      checkAuthenticationStatus();
     };
 
-    checkQuestionnaireStatus();
+    // Listen for auth logout events
+    const handleAuthLogout = () => {
+      console.log('Auth logout detected');
+      setIsLoggedIn(false);
+      setShowQuestionnaire(false);
+      setQuestionnaireData(null);
+    };
 
-    // Cleanup listener on unmount
+    window.electronAPI.onShowQuestionnaire(handleShowQuestionnaire);
+    window.electronAPI.onAuthSuccess(handleAuthSuccess);
+    window.electronAPI.onAuthLogout(handleAuthLogout);
+
+    // Initial authentication check
+    checkAuthenticationStatus();
+
+    // Cleanup listeners on unmount
     return () => {
       window.electronAPI.removeQuestionnaireListener();
+      window.electronAPI.removeAuthListener();
     };
   }, []);
 

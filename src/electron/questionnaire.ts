@@ -44,7 +44,7 @@ export async function checkUserInfoAvailable(userId: string): Promise<{ availabl
 }
 
 export async function storeUserInfoAPI(userInfo: {
-  userId: string;
+  token: string;
   name: string;
   job_role: string;
   referralSource: string;
@@ -69,7 +69,8 @@ export async function storeUserInfoAPI(userInfo: {
       ...userInfo,
       work_type: JSON.stringify(userInfo.work_type),
       distraction_apps: JSON.stringify(userInfo.distraction_apps),
-      distraction_content_types: JSON.stringify(userInfo.distraction_content_types)
+      distraction_content_types: JSON.stringify(userInfo.distraction_content_types),
+      token: userData.token
     };
 
     log.info('Sending to API:', apiUserInfo);
@@ -110,8 +111,7 @@ export async function storeUserInfoAPI(userInfo: {
   }
 }
 
-export async function fetchUserInfoAPI(userId: string): Promise<{ data: any; success: boolean; error?: string }> {
-  log.info('fetchUserInfoAPI called for userId:', userId);
+export async function fetchUserInfoAPI(): Promise<{ data: any; success: boolean; error?: string }> {
   try {
     const { userData } = getUserToken();
     if (!userData?.token) {
@@ -128,7 +128,7 @@ export async function fetchUserInfoAPI(userId: string): Promise<{ data: any; suc
         'Authorization': `Bearer ${userData.token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ userId })
+      body: JSON.stringify({ token: userData.token })
     });
 
     if (!res.ok) {
@@ -202,7 +202,7 @@ export async function handleQuestionnaire(mainWindow: BrowserWindow | null, user
 
     if (available) {
       log.info('User info available on server, fetching and storing locally');
-      const { data, success: fetchSuccess } = await fetchUserInfoAPI(userId);
+      const { data, success: fetchSuccess } = await fetchUserInfoAPI();
       if (fetchSuccess && data) {
         log.info('User info fetched and stored locally, proceeding to main app');
         if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {

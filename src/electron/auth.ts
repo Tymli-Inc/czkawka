@@ -199,6 +199,20 @@ export async function storeUserToken(userData: UserData) {
     // checking for questionnaire
     await handleQuestionnaire(mainWindow, userData.id, userData.name || userData.email || 'User');
     
+    // Ensure we redirect to main app after successful authentication
+    // This handles the case where handleQuestionnaire doesn't redirect (e.g., questionnaire is shown)
+    if (mainWindow) {
+      const currentUrl = mainWindow.webContents.getURL();
+      if (currentUrl.includes('login.html')) {
+        log.info('Still on login page after auth, forcing redirect to main app');
+        if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+          mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+        } else {
+          mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
+        }
+      }
+    }
+    
     return { success: true };
   } catch (error: any) {
     log.error('Failed to store user data:', error);

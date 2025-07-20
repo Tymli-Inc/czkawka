@@ -203,7 +203,7 @@ export function setupIpcHandlers() {
   });
 
   ipcMain.handle('fetch-user-info', async (event, userId: string) => {
-    return await fetchUserInfoAPI(userId);
+    return await fetchUserInfoAPI();
   });
 
   ipcMain.handle('get-user-info-local', () => {
