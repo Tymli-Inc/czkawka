@@ -441,7 +441,13 @@ export function setupIpcHandlers() {
   ipcMain.handle('start-focus-mode', async () => {
     try {
       log.info('IPC: Starting focus mode');
+      // Start focus mode and return result plus new session and settings
       const result = await focusModeManager.startFocusMode();
+      if (result.success) {
+        const session = focusModeManager.getCurrentSession();
+        const settings = focusModeManager.getSettings();
+        return { success: true, message: result.message, session, settings };
+      }
       return result;
     } catch (error) {
       log.error('IPC: Failed to start focus mode:', error);

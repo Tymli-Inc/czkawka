@@ -285,7 +285,9 @@ function isEntertainmentApp(appTitle: string): boolean {
   }
 }
 
-function findAppCategory(appTitle: string): {
+function findAppCategory(appTitle: string, finalCategories: {
+  [key: string]: any
+}): {
   name: string,
   color: string
 } {
@@ -296,7 +298,6 @@ function findAppCategory(appTitle: string): {
       categoryManager = CategoryManager.getInstance();
     }
     
-    const finalCategories = categoryManager.getFinalCategories();
     
     // First, check for enhanced browser titles (e.g., "Chrome - youtube.com") - prioritize this over URL tracking
     const browserDomainMatch = appTitle.match(/^(.+?)\s*-\s*(.+)$/);
@@ -352,17 +353,17 @@ function findAppCategory(appTitle: string): {
         };
       }
     }
-    
     // Regular app categorization logic for non-browser apps
     for (const [categoryName, categoryData] of Object.entries(finalCategories.categories)) {
-      const found = categoryData.apps.some((app: string) => 
+      const category = categoryData as { apps: string[]; color: string };
+      const found = category.apps.some((app: string) => 
         normalizedTitle.includes(app.toLowerCase()) || 
         app.toLowerCase().includes(normalizedTitle)
       );
       if (found) {
         return {
           name: categoryName,
-          color: categoryData.color
+          color: category.color
         }
       }
     }
@@ -1106,10 +1107,10 @@ export function getGroupedCategories(days?: number) {
           appData: Array<{ title: string; session_length: number; category: string }>;
         }[] = [];
       let prevAppEndTime: number = 0;
-      
+      const finalCategories = categoryManager.getFinalCategories();
       apps.forEach(app => {
         // Get the category of the app
-        const category = findAppCategory(app.title);
+        const category = findAppCategory(app.title, finalCategories);
         const appStartTime = app.timestamp;
         const appEndTime = app.timestamp + app.session_length;
         
@@ -1282,10 +1283,11 @@ export function getTimelineStats(targetDate: Date) {
     let categoriesCount = 0;
     if (windowRecords.length > 0) {
       const dayCategories = new Set();
-      
+      const finalCategories = categoryManager.getFinalCategories();
+
       // Group window records by category for this specific date
       windowRecords.forEach((window: any) => {
-        const category = findAppCategory(window.title);
+        const category = findAppCategory(window.title, finalCategories);
         if (category && category.name) {
           dayCategories.add(category.name);
         }
@@ -1364,14 +1366,13 @@ export function getDailyCategoryBreakdown(timestamp: number) {
         color: categoryData.color
       });
     });
-
     // Process each app and categorize it
     windowRecords.forEach((record: any) => {
       const appTitle = record.title;
       const sessionLength = record.total_session_length || 0;
       
       if (sessionLength > 0) {
-        const categoryInfo = findAppCategory(appTitle);
+        const categoryInfo = findAppCategory(appTitle, finalCategories);
         const categoryData = categoryBreakdown.get(categoryInfo.name);
         
         if (categoryData) {
@@ -1412,6 +1413,7 @@ export function getTopAppsForDate(timestamp: number) {
     dayStart.setHours(0, 0, 0, 0);
     const dayEnd = new Date(targetDate);
     dayEnd.setHours(23, 59, 59, 999);
+    const finalCategories = categoryManager.getFinalCategories();
 
     log.info(`Getting top 5 apps for ${targetDate.toDateString()} (${dayStart.getTime()} to ${dayEnd.getTime()})`);
 
@@ -1431,7 +1433,7 @@ export function getTopAppsForDate(timestamp: number) {
     const result = windowRecords.map((record: any) => {
       const appTitle = record.title;
       const sessionLength = record.total_session_length || 0;
-      const categoryInfo = findAppCategory(appTitle);
+      const categoryInfo = findAppCategory(appTitle, finalCategories);
       
       return {
         title: appTitle,

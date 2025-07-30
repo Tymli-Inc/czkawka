@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import FocusTimeline from '../components/focus-timeline/focus-timeline';
+
+import { useFocus, useFocusTimer } from '../contexts/FocusContext';
 import styles from './FocusMode.module.css';
 
 interface FocusSettings {
@@ -10,151 +12,49 @@ interface FocusSettings {
   autoBreakReminder: boolean;
 }
 
-interface FocusSession {
-  id: number;
-  startTime: number;
-  endTime: number;
-  duration: number;
-  jobRole: string;
-  isActive: boolean;
-  distractionCount: number;
-  createdAt: string;
-}
-
 const FocusMode: React.FC = () => {
-  const [settings, setSettings] = useState<FocusSettings>({
-    duration: 45,
-    jobRole: 'Software developer',
-    isEnabled: false,
-    showDistractionPopup: true,
-    autoBreakReminder: true
-  });
-  const [currentSession, setCurrentSession] = useState<FocusSession | null>(null);
-  const [isActive, setIsActive] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [timeRemaining, setTimeRemaining] = useState(0);
+  const { state, actions } = useFocus();
+  const { timeRemaining, currentSession, formattedTime, isActive } = useFocusTimer();
+  
+  const {
+    loading,
+    settings,
+    error
+  } = state;
 
+  const {
+    startFocusMode,
+    endFocusMode,
+    updateSettings,
+    clearError
+  } = actions;
+
+  // Clear errors when component mounts
   useEffect(() => {
-    loadFocusModeData();
-    setupEventListeners();
-    return () => {
-      window.electronAPI.removeFocusModeListeners();
-    };
-  }, []);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isActive && currentSession) {
-      interval = setInterval(() => {
-        const now = Date.now();
-        const elapsed = now - currentSession.startTime;
-        const remaining = Math.max(0, currentSession.duration - elapsed);
-        setTimeRemaining(remaining);
-        
-        if (remaining <= 0) {
-          setIsActive(false);
-          setCurrentSession(null);
-        }
-      }, 1000);
+    if (error) {
+      clearError();
     }
-    return () => clearInterval(interval);
-  }, [isActive, currentSession]);
-
-  const loadFocusModeData = async () => {
-    try {
-      const [settingsRes, statusRes] = await Promise.all([
-        window.electronAPI.getFocusModeSettings(),
-        window.electronAPI.getFocusModeStatus()
-      ]);
-
-      if (settingsRes.success && settingsRes.data) {
-        setSettings(settingsRes.data);
-      }
-
-      if (statusRes.success && statusRes.data) {
-        setIsActive(statusRes.data.isActive);
-        setCurrentSession(statusRes.data.session);
-        if (statusRes.data.session) {
-          const now = Date.now();
-          const elapsed = now - statusRes.data.session.startTime;
-          const remaining = Math.max(0, statusRes.data.session.duration - elapsed);
-          setTimeRemaining(remaining);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load focus mode data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const setupEventListeners = () => {
-    window.electronAPI.onFocusModeStarted((data) => {
-      setIsActive(true);
-      setCurrentSession(data.session);
-      setTimeRemaining(data.session.duration);
-    });
-
-    window.electronAPI.onFocusModeEnded((data) => {
-      setIsActive(false);
-      setCurrentSession(null);
-      setTimeRemaining(0);
-      loadFocusModeData(); // Refresh history
-    });
-
-    window.electronAPI.onFocusDistraction((data) => {
-      if (currentSession) {
-        setCurrentSession({
-          ...currentSession,
-          distractionCount: data.distractionCount
-        });
-      }
-    });
-
-    window.electronAPI.onFocusSettingsUpdated((newSettings) => {
-      setSettings(newSettings);
-    });
-  };
+  }, [error, clearError]);
 
   const handleStartFocus = async () => {
-    try {
-      const result = await window.electronAPI.startFocusMode();
-      if (!result.success) {
-        alert(result.message || 'Failed to start focus mode');
-      }
-    } catch (error) {
-      console.error('Failed to start focus mode:', error);
+    const success = await startFocusMode();
+    if (!success && error) {
+      alert(error);
     }
   };
 
   const handleEndFocus = async () => {
-    try {
-      const result = await window.electronAPI.endFocusMode();
-      if (!result.success) {
-        alert(result.message || 'Failed to end focus mode');
-      }
-    } catch (error) {
-      console.error('Failed to end focus mode:', error);
+    const success = await endFocusMode();
+    if (!success && error) {
+      alert(error);
     }
   };
 
   const handleSettingsUpdate = async (newSettings: Partial<Omit<FocusSettings, 'jobRole'>>) => {
-    try {
-      const result = await window.electronAPI.updateFocusModeSettings(newSettings);
-      if (result.success) {
-        setSettings({ ...settings, ...newSettings });
-      } else {
-        alert(result.message || 'Failed to update settings');
-      }
-    } catch (error) {
-      console.error('Failed to update settings:', error);
+    const success = await updateSettings(newSettings);
+    if (!success && error) {
+      alert(error);
     }
-  };
-
-  const formatTime = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   if (loading) {
@@ -167,6 +67,8 @@ const FocusMode: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      {/* Debug components - remove these in production */}
+
 
       <div className={styles.mainContent}>
         {/* Left Side - Timer */}
@@ -205,7 +107,7 @@ const FocusMode: React.FC = () => {
                   
                   <div className={styles.timerContent}>
                     <div className={styles.timeDisplay}>
-                      {formatTime(timeRemaining)}
+                      {formattedTime}
                     </div>
                     <div className={styles.timeLabel}>------</div>
                     <button 
@@ -226,7 +128,7 @@ const FocusMode: React.FC = () => {
               <div className={styles.startCircle}>
                 <div className={styles.startContent}>
                   <div className={styles.durationDisplay}>
-                    {formatTime(settings.duration * 60 * 1000)}
+                    {Math.floor(settings.duration)}:{(Math.floor((settings.duration * 60) % 60)).toString().padStart(2, '0')}
                   </div>
                   <div className={styles.durationLabel}>-----</div>
                   <button 

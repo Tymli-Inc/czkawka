@@ -1,9 +1,50 @@
-import { BrowserWindow, dialog, globalShortcut, ipcMain, shell } from 'electron';
+import { BrowserWindow, dialog, globalShortcut, ipcMain, shell, app } from 'electron';
 import { db } from './database';
 import CategoryManager from './categoryManager';
 import { mainWindow } from './main';
 import log from 'electron-log';
 import { getUserInfoLocal } from './questionnaire';
+import * as path from 'path';
+import * as fs from 'fs';
+
+// Helper function to get asset path for both dev and prod
+function getAssetPath(filename: string): string {
+  if (app.isPackaged) {
+    // In production, assets are in resources/assets
+    return path.join(process.resourcesPath, 'assets', filename);
+  } else {
+    // In development, assets are in the assets folder
+    return path.join(__dirname, '..', '..', 'assets', filename);
+  }
+}
+
+// Helper function to load HTML file and replace placeholders
+function loadHtmlTemplate(filename: string, replacements: Record<string, string> = {}): string {
+  try {
+    const filePath = getAssetPath(filename);
+    let html = fs.readFileSync(filePath, 'utf-8');
+    
+    // Replace placeholders
+    Object.entries(replacements).forEach(([key, value]) => {
+      html = html.replace(new RegExp(`{{${key}}}`, 'g'), value);
+    });
+    
+    return html;
+  } catch (error) {
+    log.error(`Failed to load HTML template ${filename}:`, error);
+    // Fallback to minimal HTML
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head><title>Focus Mode</title></head>
+      <body>
+        <p>Failed to load template. Please check your installation.</p>
+        <button onclick="window.close()">Close</button>
+      </body>
+      </html>
+    `;
+  }
+}
 
 // Job role configuration for non-focus categories
 const JOB_ROLE_NON_FOCUS_CATEGORIES = {
@@ -696,113 +737,12 @@ class FocusModeManager {
     // Center the popup on screen
     this.distractionPopup.center();
 
-    log.info('📝 Generating popup HTML content');
-    // Create HTML content for distraction popup
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Focus Mode - Distraction Alert</title>
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 260px;
-            text-align: center;
-          }
-          .icon {
-            font-size: 48px;
-            margin-bottom: 20px;
-          }
-          .title {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 10px;
-          }
-          .message {
-            font-size: 16px;
-            margin-bottom: 20px;
-            opacity: 0.9;
-          }
-          .app-info {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 10px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-          }
-          .buttons {
-            display: flex;
-            gap: 10px;
-          }
-          button {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-          }
-          button:hover {
-            background: rgba(255, 255, 255, 0.3);
-          }
-          .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          .close-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-          }
-        </style>
-      </head>
-      <body>
-        <button class="close-btn" onclick="window.close()">×</button>
-        <div class="icon">🎯</div>
-        <div class="title">Focus Mode Alert</div>
-        <div class="message">You're getting distracted!</div>
-        <div class="app-info">
-          <div><strong>App:</strong> ${appName}</div>
-          <div><strong>Category:</strong> ${category}</div>
-        </div>
-        <div class="buttons">
-          <button onclick="window.close()">Back to Focus</button>
-          <button onclick="endFocusMode()">End Focus Mode</button>
-        </div>
-        <script>
-          function endFocusMode() {
-            window.electronAPI?.endFocusMode();
-            window.close();
-          }
-          
-          // Auto-close after 10 seconds
-          setTimeout(() => {
-            window.close();
-          }, 10000);
-        </script>
-      </body>
-      </html>
-    `;
+    log.info('📝 Loading popup HTML from template');
+    // Load HTML content from template file
+    const htmlContent = loadHtmlTemplate('focus-distraction-popup.html', {
+      'APP_NAME': appName,
+      'CATEGORY': category
+    });
 
     this.distractionPopup.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
     
@@ -839,113 +779,10 @@ class FocusModeManager {
       }
     });
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Focus Mode - Break Time</title>
-        <style>
-          body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
-            color: white;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 310px;
-            text-align: center;
-          }
-          .icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-          }
-          .title {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 10px;
-          }
-          .message {
-            font-size: 18px;
-            margin-bottom: 30px;
-            opacity: 0.9;
-          }
-          .stats {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-          }
-          .stat {
-            text-align: center;
-          }
-          .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-          }
-          .stat-label {
-            font-size: 14px;
-            opacity: 0.8;
-          }
-          .buttons {
-            display: flex;
-            gap: 15px;
-          }
-          button {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.2s;
-          }
-          button:hover {
-            background: rgba(255, 255, 255, 0.3);
-          }
-          .primary-btn {
-            background: rgba(255, 255, 255, 0.3);
-          }
-        </style>
-      </head>
-      <body>
-        <div class="icon">🎉</div>
-        <div class="title">Focus Session Complete!</div>
-        <div class="message">Great job! You've completed your ${Math.floor((this.focusSession?.duration || 0) / 60000)}-minute focus session.</div>
-        <div class="stats">
-          <div class="stat">
-            <div class="stat-value">${Math.floor((this.focusSession?.duration || 0) / 60000)}m</div>
-            <div class="stat-label">Focused</div>
-          </div>
-          <div class="stat">
-            <div class="stat-value">${this.focusSession?.distractionCount || 0}</div>
-            <div class="stat-label">Distractions</div>
-          </div>
-        </div>
-        <div class="buttons">
-          <button class="primary-btn" onclick="takeBreak()">Take a Break</button>
-          <button onclick="startNewSession()">Start New Session</button>
-        </div>
-        <script>
-          function takeBreak() {
-            window.close();
-          }
-          
-          function startNewSession() {
-            window.electronAPI?.startFocusMode();
-            window.close();
-          }
-        </script>
-      </body>
-      </html>
-    `;
+    const htmlContent = loadHtmlTemplate('focus-break-reminder.html', {
+      'DURATION': Math.floor((this.focusSession?.duration || 0) / 60000).toString(),
+      'DISTRACTION_COUNT': (this.focusSession?.distractionCount || 0).toString()
+    });
 
     breakWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
     breakWindow.show();
@@ -969,7 +806,7 @@ class FocusModeManager {
 
       this.durationPopup = new BrowserWindow({
         width: 450,
-        height: 400,
+        height: 600,
         modal: false, // Changed from true to false to prevent blocking
         parent: mainWindow || undefined,
         show: false,
@@ -983,232 +820,7 @@ class FocusModeManager {
         }
       });
 
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Focus Mode - Select Duration</title>
-          <style>
-            @keyframes fadeIn {
-              from { opacity: 0; transform: translateY(10px); }
-              to { opacity: 1; transform: translateY(0); }
-            }
-            
-            @keyframes pulse {
-              0%, 100% { transform: scale(1); }
-              50% { transform: scale(1.05); }
-            }
-            
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              background: linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%);
-              color: white;
-              margin: 0;
-              padding: 20px;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              min-height: 360px;
-              text-align: center;
-              animation: fadeIn 0.3s ease-out;
-            }
-            
-            .icon {
-              font-size: 48px;
-              margin-bottom: 20px;
-              animation: pulse 2s infinite;
-            }
-            
-            .title {
-              font-size: 24px;
-              font-weight: bold;
-              margin-bottom: 10px;
-              background: linear-gradient(45deg, #fff, #f0f0f0);
-              -webkit-background-clip: text;
-              -webkit-text-fill-color: transparent;
-              background-clip: text;
-            }
-            
-            .message {
-              font-size: 16px;
-              margin-bottom: 30px;
-              opacity: 0.9;
-            }
-            
-            .form-group {
-              margin-bottom: 20px;
-              width: 100%;
-              max-width: 300px;
-            }
-            
-            label {
-              display: block;
-              margin-bottom: 8px;
-              font-size: 14px;
-              opacity: 0.9;
-              font-weight: 500;
-            }
-            
-            input[type="text"] {
-              width: 100%;
-              padding: 12px;
-              background: rgba(255, 255, 255, 0.1);
-              border: 1px solid rgba(255, 255, 255, 0.3);
-              border-radius: 8px;
-              color: white;
-              font-size: 14px;
-              box-sizing: border-box;
-              transition: all 0.2s ease;
-              backdrop-filter: blur(10px);
-            }
-            
-            input[type="text"]::placeholder {
-              color: rgba(255, 255, 255, 0.6);
-            }
-            
-            input[type="text"]:focus {
-              outline: none;
-              border-color: rgba(255, 255, 255, 0.6);
-              background: rgba(255, 255, 255, 0.15);
-              box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
-            }
-            
-            select {
-              width: 100%;
-              background: rgba(255, 255, 255, 0.1);
-              border: 1px solid rgba(255, 255, 255, 0.3);
-              color: white;
-              padding: 12px;
-              border-radius: 8px;
-              font-size: 16px;
-              cursor: pointer;
-              box-sizing: border-box;
-              transition: all 0.2s ease;
-              backdrop-filter: blur(10px);
-            }
-            
-            select:focus {
-              outline: none;
-              border-color: rgba(255, 255, 255, 0.6);
-              background: rgba(255, 255, 255, 0.15);
-              box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
-            }
-            
-            select option {
-              background: #8B5CF6;
-              color: white;
-            }
-            
-            .buttons {
-              display: flex;
-              gap: 15px;
-              margin-top: 10px;
-            }
-            
-            button {
-              background: rgba(255, 255, 255, 0.2);
-              border: 1px solid rgba(255, 255, 255, 0.3);
-              color: white;
-              padding: 12px 24px;
-              border-radius: 8px;
-              cursor: pointer;
-              font-size: 16px;
-              font-weight: 500;
-              transition: all 0.2s ease;
-              backdrop-filter: blur(10px);
-              position: relative;
-              overflow: hidden;
-            }
-            
-            button:hover {
-              background: rgba(255, 255, 255, 0.3);
-              transform: translateY(-1px);
-              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            }
-            
-            button:active {
-              transform: translateY(0);
-            }
-            
-            .primary-btn {
-              background: rgba(255, 255, 255, 0.3);
-              border-color: rgba(255, 255, 255, 0.5);
-            }
-            
-            .primary-btn:hover {
-              background: rgba(255, 255, 255, 0.4);
-            }
-            
-            .close-btn {
-              position: absolute;
-              top: 10px;
-              right: 10px;
-              background: none;
-              border: none;
-              color: white;
-              font-size: 18px;
-              cursor: pointer;
-              width: 30px;
-              height: 30px;
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              transition: all 0.2s ease;
-            }
-            
-            .close-btn:hover {
-              background: rgba(255, 255, 255, 0.2);
-              transform: scale(1.1);
-            }
-          </style>
-        </head>
-        <body>
-          <button class="close-btn" onclick="cancelFocus()">×</button>
-          <div class="icon">🎯</div>
-          <div class="title">Start Focus Mode</div>
-          <div class="message">Configure your focus session:</div>
-          
-          <div class="form-group">
-            <label for="titleInput">Session Title (optional)</label>
-            <input type="text" id="titleInput" placeholder="e.g., Deep Work, Code Review, Writing..." />
-          </div>
-          
-          <div class="form-group">
-            <label for="durationSelect">Duration</label>
-            <select id="durationSelect">
-              <option value="15">15 minutes</option>
-              <option value="25">25 minutes</option>
-              <option value="30">30 minutes</option>
-              <option value="45" selected>45 minutes</option>
-              <option value="60">60 minutes</option>
-              <option value="90">90 minutes</option>
-              <option value="120">2 hours</option>
-            </select>
-          </div>
-          
-          <div class="buttons">
-            <button onclick="cancelFocus()">Cancel</button>
-            <button class="primary-btn" onclick="startFocus()">Start Focus</button>
-          </div>
-          <script>
-            function startFocus() {
-              const duration = parseInt(document.getElementById('durationSelect').value);
-              const title = document.getElementById('titleInput').value.trim();
-              window.electronAPI?.startFocusModeWithDuration(duration, title);
-              window.close();
-            }
-            
-            function cancelFocus() {
-              window.electronAPI?.cancelFocusMode();
-              window.close();
-            }
-          </script>
-        </body>
-        </html>
-      `;
+      const htmlContent = loadHtmlTemplate('focus-duration-selection.html');
 
       this.durationPopup.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
       

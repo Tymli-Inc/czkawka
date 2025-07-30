@@ -13,6 +13,7 @@ import FocusMode from './pages/FocusMode';
 import TasksPage from './pages/TasksPage';
 import ProjectsPage from './pages/ProjectsPage';
 import Questionnaire from './components/questionnaire/Questionnaire';
+import { FocusProvider } from './contexts/FocusContext';
 import type { ElectronAPI } from '../types/electronAPI';
 
 declare global {
@@ -125,35 +126,37 @@ const App = () => {
   }
 
   return (
-    <Router>
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <TopBar />
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <Sidebar />
-          <main style={{ 
-            flex: 1, 
-            overflow: 'auto',
-            background : "rgba(13, 13, 13, 1)",
-            borderTop: '1px solid rgb(46, 46, 46)',
-            borderLeft: '1px solid rgb(46, 46, 46)',
-            borderTopLeftRadius: '8px',
-          }}>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/analytics" element={<AnalyticsPage />} />
-              <Route path="/screentime" element={<ScreentimePage />} />
-              <Route path="/categories" element={<CategoriesPage />} />
-              <Route path="/settings/*" element={<SettingsPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/blocking" element={<Blocking />} />
-              <Route path="/focus" element={<FocusMode />} />
-              <Route path="/tasks" element={<TasksPage />} />
-              <Route path="/projects" element={<ProjectsPage />} />
-            </Routes>
-          </main>
+    <FocusProvider>
+      <Router>
+        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <TopBar />
+          <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <Sidebar />
+            <main style={{ 
+              flex: 1, 
+              overflow: 'auto',
+              background : "rgba(13, 13, 13, 1)",
+              borderTop: '1px solid rgb(46, 46, 46)',
+              borderLeft: '1px solid rgb(46, 46, 46)',
+              borderTopLeftRadius: '8px',
+            }}>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
+                <Route path="/screentime" element={<ScreentimePage />} />
+                <Route path="/categories" element={<CategoriesPage />} />
+                <Route path="/settings/*" element={<SettingsPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/blocking" element={<Blocking />} />
+                <Route path="/focus" element={<FocusMode />} />
+                <Route path="/tasks" element={<TasksPage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+              </Routes>
+            </main>
+          </div>
         </div>
-      </div>
-    </Router>
+      </Router>
+    </FocusProvider>
   );
 };
 

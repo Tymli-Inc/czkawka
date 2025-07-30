@@ -6,13 +6,14 @@ import { IoAnalytics, IoPlay, IoStop } from "react-icons/io5";
 import { AiFillPieChart } from "react-icons/ai";
 import { PiClockFill } from "react-icons/pi";
 import { HiOutlineFire } from "react-icons/hi";
+import { useFocusToggle } from '../contexts/FocusContext';
 import styles from "./sidebar.module.css";
 
 const Sidebar: React.FC = () => {
   const [expanded, setExpanded] = React.useState(false);
   const [trackingEnabled, setTrackingEnabled] = useState<boolean>(true);
-  const [focusActive, setFocusActive] = useState<boolean>(false);
   const location = useLocation();
+  const { isActive: focusActive, loading: focusLoading, toggle: toggleFocus, error: focusError, clearError } = useFocusToggle();
 
   // Handle mouse enter and leave for hover expansion
   const handleMouseEnter = () => {
@@ -143,28 +144,8 @@ const Sidebar: React.FC = () => {
       setTrackingEnabled(enabled);
     });
     
-    // Get initial focus status
-    window.electronAPI.getFocusModeStatus().then((result) => {
-      if (result.success && result.data) {
-        console.log('Sidebar: Initial focus status:', result.data);
-        setFocusActive(result.data.isActive);
-      }
-    });
-    
-    // Subscribe to focus mode changes
-    window.electronAPI.onFocusModeStarted?.(() => {
-      console.log('Sidebar: Focus mode started');
-      setFocusActive(true);
-    });
-    
-    window.electronAPI.onFocusModeEnded?.(() => {
-      console.log('Sidebar: Focus mode ended');
-      setFocusActive(false);
-    });
-    
     return () => {
       window.electronAPI.removeTrackingStatusListener();
-      window.electronAPI.removeFocusModeListeners?.();
     };
   }, []);
 
@@ -280,27 +261,14 @@ const Sidebar: React.FC = () => {
          >
           <button
             className={`${styles.link} ${focusActive ? styles.active : ''}`}
-            onClick={async () => {
-              try {
-                // Toggle focus mode
-                const statusResult = await window.electronAPI.getFocusModeStatus();
-                if (statusResult.success && statusResult.data?.isActive) {
-                  // If active, end it
-                  await window.electronAPI.endFocusMode();
-                } else {
-                  // If not active, start it
-                  await window.electronAPI.startFocusMode();
-                }
-              } catch (error) {
-                console.error('Failed to toggle focus mode:', error);
-              }
-            }}
+            onClick={toggleFocus}
+            disabled={focusLoading}
           >
             <motion.div
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
-              {focusActive ? <IoStop /> : <IoPlay />}
+              {focusLoading ? '...' : focusActive ? <IoStop /> : <IoPlay />}
             </motion.div>
             <AnimatePresence>
               {expanded && (
@@ -317,7 +285,7 @@ const Sidebar: React.FC = () => {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {focusActive ? 'End Focus' : 'Focus Session'}
+                  {focusLoading ? 'Loading...' : focusActive ? 'End Focus' : 'Focus Session'}
                 </motion.span>
               )}
             </AnimatePresence>
